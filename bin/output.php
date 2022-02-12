@@ -64,7 +64,9 @@ foreach ($files as $file) {
             if (null === $outputResource) {
                 /** @var resource $outputResource */
                 $outputResource = fopen(sprintf(__DIR__ . '/../data/output/chunk%04d.csv', ++$chunks), 'w');
-                fputcsv($outputResource, $columns);
+                if (false == fputcsv($outputResource, $columns)) {
+                    throw new RuntimeException('There was an error outputting to a CSV file');
+                }
             }
 
             $reshaped = $template;
@@ -76,7 +78,7 @@ foreach ($files as $file) {
             }
 
             if (false === fputcsv($outputResource, array_values($reshaped))) {
-                throw new RuntimeException('There was an error outputting to a CSV');
+                throw new RuntimeException('There was an error outputting to a CSV file');
             }
 
             $sizeInChunk++;

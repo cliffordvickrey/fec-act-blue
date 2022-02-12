@@ -30,6 +30,8 @@ if (0 === count($columns)) {
     throw new RuntimeException('Could not parse column information');
 }
 
+$template = array_combine($columns, array_fill(0, count($columns), ''));
+
 $files = glob(__DIR__ . '/../data/raw-data/*.txt') ?: [];
 
 sort($files);
@@ -65,7 +67,7 @@ foreach ($files as $file) {
                 fputcsv($outputResource, $columns);
             }
 
-            $reshaped = array_combine($columns, array_fill(0, count($columns), ''));
+            $reshaped = $template;
 
             foreach ($data as $key => $value) {
                 if (isset($reshaped[$key])) {
@@ -73,9 +75,17 @@ foreach ($files as $file) {
                 }
             }
 
-            fputcsv($outputResource, array_values($reshaped));
+            if (false === fputcsv($outputResource, array_values($reshaped))) {
+                throw new RuntimeException('There was an error outputting to a CSV');
+            }
+
             $sizeInChunk++;
         }
+    }
+
+    if (!feof($resource)) {
+        $msg = sprintf('There was an error reading from %s', $file);
+        throw new RuntimeException($msg);
     }
 
     fclose($resource);

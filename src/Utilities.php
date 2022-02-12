@@ -9,10 +9,14 @@ namespace CliffordVickrey\FecActBlue;
 use function array_merge;
 use function is_array;
 use function is_scalar;
+use function is_string;
+use function strlen;
+use function substr;
 
 class Utilities
 {
     /**
+     * Flattens a JSON payload
      * @param array<string, mixed> $row
      * @param string $root
      * @return array<string, scalar>
@@ -39,6 +43,7 @@ class Utilities
     }
 
     /**
+     * Get a flattened column list from payload JSON
      * @param array<mixed> $row
      * @param string $root
      * @return string[]
@@ -56,5 +61,23 @@ class Utilities
         }
 
         return $columns;
+    }
+
+    /**
+     * Normalizes the contribution recipient date in FEC data
+     * @param mixed $value
+     * @return string|null
+     */
+    public static function parseDate(mixed $value): ?string
+    {
+        if (!is_string($value)) {
+            return null;
+        }
+
+        if (strlen($value) < 10) {
+            return null;
+        }
+
+        return substr($value, 0, 10);
     }
 }

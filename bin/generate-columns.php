@@ -22,7 +22,6 @@ foreach ($files as $file) {
     $resource = fopen($file, 'r');
 
     while (false !== ($line = fgets($resource))) {
-        $line = (string)fgets($resource);
         $rows = json_decode($line, true);
 
         if (!is_array($rows)) {
@@ -32,6 +31,11 @@ foreach ($files as $file) {
         foreach ($rows as $row) {
             $columns = array_values(array_unique(array_merge($columns, Utilities::extractColumnsFromRow($row))));
         }
+    }
+
+    if (!feof($resource)) {
+        $msg = sprintf('There was an error reading from %s', $file);
+        throw new RuntimeException($msg);
     }
 
     fclose($resource);

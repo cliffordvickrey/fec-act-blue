@@ -3,6 +3,7 @@
 
 declare(strict_types=1);
 
+use CliffordVickrey\FecActBlue\Utilities;
 use GuzzleHttp\Client;
 use GuzzleHttp\Exception\ClientException;
 use GuzzleHttp\Psr7\Stream;
@@ -34,23 +35,15 @@ $valid = true;
 
 // endregion
 
-// region callbacks
+// region CLI params
 
-/**
- * @param mixed $value
- * @return string|null
- */
-$dateParser = function (mixed $value): ?string {
-    if (!is_string($value)) {
-        return null;
-    }
+if (is_string($argv[1] ?? null) && '' !== trim($argv[1])) {
+    $minDate = $argv[1];
+}
 
-    if (strlen($value) < 10) {
-        return null;
-    }
-
-    return substr($value, 0, 10);
-};
+if (is_string($argv[2] ?? null) && '' !== trim($argv[2])) {
+    $maxDate = $argv[2];
+}
 
 // endregion
 
@@ -152,7 +145,7 @@ try {
 
         // try to get the last contribution receipt date
         $contributionReceiptDates = array_values(array_filter(array_map(
-            $dateParser,
+            [Utilities::class, 'parseDate'],
             array_column($results, 'contribution_receipt_date')
         )));
 

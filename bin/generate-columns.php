@@ -20,15 +20,18 @@ $columns = [];
 foreach ($files as $file) {
     /** @var resource $resource */
     $resource = fopen($file, 'r');
-    $line = (string)fgets($resource);
-    $rows = json_decode($line, true);
 
-    if (!is_array($rows)) {
-        $rows = [];
-    }
+    while (false !== ($line = fgets($resource))) {
+        $line = (string)fgets($resource);
+        $rows = json_decode($line, true);
 
-    foreach ($rows as $row) {
-        $columns = array_values(array_unique(array_merge($columns, Utilities::extractColumnsFromRow($row))));
+        if (!is_array($rows)) {
+            $rows = [];
+        }
+
+        foreach ($rows as $row) {
+            $columns = array_values(array_unique(array_merge($columns, Utilities::extractColumnsFromRow($row))));
+        }
     }
 
     fclose($resource);

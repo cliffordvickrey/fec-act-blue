@@ -39,41 +39,43 @@ $outputResource = null;
 foreach ($files as $file) {
     /** @var resource $resource */
     $resource = fopen($file, 'r');
-    $line = (string)fgets($resource);
-    $rows = json_decode($line, true);
 
-    if (!is_array($rows)) {
-        $rows = [];
-    }
+    while (false !== ($line = fgets($resource))) {
+        $rows = json_decode($line, true);
 
-    foreach ($rows as $row) {
-        $data = Utilities::extractDataFromRow($row);
+        if (!is_array($rows)) {
+            $rows = [];
+        }
 
-        if ($sizeInChunk > $sizePerChunk) {
-            if (null !== $outputResource) {
-                fclose($outputResource);
+        foreach ($rows as $row) {
+            $data = Utilities::extractDataFromRow($row);
+
+            if ($sizeInChunk > $sizePerChunk) {
+                if (null !== $outputResource) {
+                    fclose($outputResource);
+                }
+
+                $outputResource = null;
+                $sizeInChunk = 0;
             }
 
-            $outputResource = null;
-            $sizeInChunk = 0;
-        }
-
-        if (null === $outputResource) {
-            /** @var resource $outputResource */
-            $outputResource = fopen(sprintf(__DIR__ . '/../data/output/chunk%04d.csv', ++$chunks), 'w');
-            fputcsv($outputResource, $columns);
-        }
-
-        $reshaped = array_combine($columns, array_fill(0, count($columns), ''));
-
-        foreach ($data as $key => $value) {
-            if (isset($reshaped[$key])) {
-                $reshaped[$key] = $value;
+            if (null === $outputResource) {
+                /** @var resource $outputResource */
+                $outputResource = fopen(sprintf(__DIR__ . '/../data/output/chunk%04d.csv', ++$chunks), 'w');
+                fputcsv($outputResource, $columns);
             }
-        }
 
-        fputcsv($outputResource, array_values($reshaped));
-        $sizeInChunk++;
+            $reshaped = array_combine($columns, array_fill(0, count($columns), ''));
+
+            foreach ($data as $key => $value) {
+                if (isset($reshaped[$key])) {
+                    $reshaped[$key] = $value;
+                }
+            }
+
+            fputcsv($outputResource, array_values($reshaped));
+            $sizeInChunk++;
+        }
     }
 
     fclose($resource);

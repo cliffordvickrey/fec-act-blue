@@ -42,7 +42,7 @@ if (is_string($argv[1] ?? null) && '' !== trim($argv[1])) {
 }
 
 if (!Utilities::isDateValid($minDate)) {
-    echo "'$minDate' is not a valid value for min_date. Expected date formatted as 'Y-m-d'";
+    echo "'$minDate' is not a valid value for min_date. Expected date formatted as 'Y-m-d'" . PHP_EOL;
     exit(1);
 }
 
@@ -51,7 +51,7 @@ if (is_string($argv[2] ?? null) && '' !== trim($argv[2])) {
 }
 
 if (!Utilities::isDateValid($maxDate)) {
-    echo "'$maxDate' is not a valid value for max_date. Expected date formatted as 'Y-m-d'";
+    echo "'$maxDate' is not a valid value for max_date. Expected date formatted as 'Y-m-d'" . PHP_EOL;
     exit(1);
 }
 
@@ -208,6 +208,6 @@ try {
     $pageStream?->close();
 }
 
-echo $hadError ? 'Error! (check logs)' : 'Success!';
+echo ($hadError ? 'Error! (check logs)' : 'Success!') . PHP_EOL;
 
 exit($hadError ? 1 : 0);

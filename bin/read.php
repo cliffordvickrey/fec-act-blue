@@ -24,11 +24,11 @@ $credentials = require __DIR__ . '/../data/credentials.php';
 $hadError = false;
 $lastIndexes = null;
 /** @var resource $logResource */
-$logResource = fopen(__DIR__ . sprintf('/../data/log/log%d.log', time()), 'w');
+$logResource = fopen(__DIR__ . '/../data/log/request-log.log', 'a');
 $logStream = new Stream($logResource);
 $maxDate = '2019-12-31';
 $maxTries = 20;
-$minDate = '2019-02-09';
+$minDate = '2019-01-01';
 $pageStream = null;
 $url = 'https://api.open.fec.gov/v1/schedules/schedule_a/';
 $valid = true;
@@ -41,8 +41,18 @@ if (is_string($argv[1] ?? null) && '' !== trim($argv[1])) {
     $minDate = $argv[1];
 }
 
+if (!Utilities::isDateValid($minDate)) {
+    echo "'$minDate' is not a valid value for min_date. Expected date formatted as 'Y-m-d'";
+    exit(1);
+}
+
 if (is_string($argv[2] ?? null) && '' !== trim($argv[2])) {
     $maxDate = $argv[2];
+}
+
+if (!Utilities::isDateValid($maxDate)) {
+    echo "'$maxDate' is not a valid value for max_date. Expected date formatted as 'Y-m-d'";
+    exit(1);
 }
 
 // endregion
@@ -114,8 +124,8 @@ try {
             echo 'error!' . PHP_EOL;
 
             if (429 === $logParams[1]) {
-                echo "The rate limit has been exceeded. Let's wait twenty minutes ..." . PHP_EOL;
-                sleep(1200); // wait twenty minutes before trying again
+                echo "The rate limit has been exceeded. Let's wait an hour ..." . PHP_EOL;
+                sleep(3600); // wait twenty minutes before trying again
             } else {
                 echo 'Request failed! Retrying in 500 milliseconds ...' . PHP_EOL;
                 usleep(500000); // wait half a second before trying again
@@ -143,51 +153,16 @@ try {
             throw new RuntimeException('Response did not provide results');
         }
 
-        // try to get the last contribution receipt date
-        $contributionReceiptDates = array_values(array_filter(array_map(
-            [Utilities::class, 'parseDate'],
-            array_column($results, 'contribution_receipt_date')
-        )));
-
-        if (0 !== count($contributionReceiptDates)) {
-            sort($contributionReceiptDates);
-            $contributionReceiptDates = array_values($contributionReceiptDates);
-            $maxContributionReceiptDate = array_pop($contributionReceiptDates);
-
-            if ($minDate !== $maxContributionReceiptDate) {
-                if (null !== $pageStream) {
-                    /**
-                     * @param array<string, mixed> $row
-                     * @return bool
-                     */
-                    $dateIncludeFilter = function (array $row) use ($minDate): bool {
-                        $contributionReceiptDate = $row['contribution_receipt_date'] ?? null;
-
-                        if (!is_string($contributionReceiptDate)) {
-                            return false;
-                        }
-
-                        return str_starts_with($contributionReceiptDate, $minDate);
-                    };
-
-                    /**
-                     * @param array<string, mixed> $row
-                     * @return bool
-                     */
-                    $dateExcludeFilter = function (array $row) use ($dateIncludeFilter): bool {
-                        return !$dateIncludeFilter($row);
-                    };
-
-                    $line = json_encode((array_values(array_filter($results, $dateIncludeFilter))) ?: '[]') . PHP_EOL;
-                    $pageStream->write($line);
-                    $results = array_values(array_filter($results, $dateExcludeFilter));
-                }
-
-                $pageStream?->close();
-                $pageStream = null;
-            }
-
-            $minDate = $maxContributionReceiptDate;
+        // group results by contribution receipt date
+        if (0 === count($results)) {
+            $resultsByDate = [$minDate => $results];
+        } else {
+            /** @var non-empty-array<string, list<array<string, mixed>>> $resultsByDate */
+            $resultsByDate = array_reduce(
+                $results,
+                [Utilities::class, 'groupResultsByContributionReceiptDate'], // @phpstan-ignore-line
+                [$minDate => []]
+            );
         }
 
         $pagination = $data['pagination'] ?? null;
@@ -204,19 +179,28 @@ try {
 
         // region write data
 
-        if (null === $pageStream) {
-            /** @var resource $pageResource */
-            $pageResource = fopen(sprintf(__DIR__ . '/../data/raw-data/%s.txt', $minDate), 'w');
-            $pageStream = new Stream($pageResource);
-        }
+        $minDate = (string)array_key_last($resultsByDate);
 
-        $pageStream->write((json_encode($results) ?: '[]') . PHP_EOL);
+        foreach ($resultsByDate as $date => $output) {
+            if (null === $pageStream) {
+                /** @var resource $pageResource */
+                $pageResource = fopen(sprintf(__DIR__ . '/../data/raw-data/%s.txt', $date), 'w');
+                $pageStream = new Stream($pageResource);
+            }
+
+            $pageStream->write((json_encode($output) ?: '[]') . PHP_EOL);
+
+            if ($date !== $minDate) {
+                $pageStream->close();
+                $pageStream = null;
+            }
+        }
 
         // endregion
     } while ($valid);
 } catch (Throwable $ex) {
     $hadError = true;
-    $logStream->write((string)$ex);
+    $logStream->write($ex . PHP_EOL);
 } finally {
     $logStream->close();
     $pageStream?->close();

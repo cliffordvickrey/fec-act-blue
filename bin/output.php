@@ -87,7 +87,7 @@ foreach ($files as $file) {
                         continue;
                     }
 
-                    throw new UnexpectedValueException("Unexpected column, '$key'");
+                    throw new UnexpectedValueException("Unexpected column, '$key'. Try re-generating column data");
                 }
 
                 if (false === fputcsv($outputResource, array_values($reshaped))) {

@@ -1,5 +1,6 @@
 *
 !.gitignore
+!columns.json
 !raw-data
 !log
 !output

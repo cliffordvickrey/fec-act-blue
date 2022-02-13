@@ -38,7 +38,7 @@ $valid = true;
 // region CLI params
 
 if (is_string($argv[1] ?? null) && '' !== trim($argv[1])) {
-    $minDate = $argv[1];
+    $minDate = trim($argv[1]);
 }
 
 if (!Utilities::isDateValid($minDate)) {
@@ -47,7 +47,7 @@ if (!Utilities::isDateValid($minDate)) {
 }
 
 if (is_string($argv[2] ?? null) && '' !== trim($argv[2])) {
-    $maxDate = $argv[2];
+    $maxDate = trim($argv[2]);
 }
 
 if (!Utilities::isDateValid($maxDate)) {
@@ -125,7 +125,7 @@ try {
 
             if (429 === $logParams[1]) {
                 echo "The rate limit has been exceeded. Let's wait an hour ..." . PHP_EOL;
-                sleep(3600); // wait twenty minutes before trying again
+                sleep(3600); // wait an hour before trying again
             } else {
                 echo 'Request failed! Retrying in 500 milliseconds ...' . PHP_EOL;
                 usleep(500000); // wait half a second before trying again
@@ -154,23 +154,21 @@ try {
         }
 
         // group results by contribution receipt date
-        if (0 === count($results)) {
-            $resultsByDate = [$minDate => $results];
-        } else {
-            /** @var non-empty-array<string, list<array<string, mixed>>> $resultsByDate */
-            $resultsByDate = array_reduce(
-                $results,
-                [Utilities::class, 'groupResultsByContributionReceiptDate'], // @phpstan-ignore-line
-                [$minDate => []]
-            );
-        }
+        /** @var non-empty-array<string, list<array<string, mixed>>> $resultsByDate */
+        $resultsByDate = array_reduce(
+            $results,
+            [Utilities::class, 'groupResultsByContributionReceiptDate'],
+            [$minDate => []]
+        );
 
+        // try to resolve the last index params to send to the next request
         $pagination = $data['pagination'] ?? null;
 
         $lastIndexes = null;
 
         $lastIndexes = is_array($pagination) ? ($pagination['last_indexes'] ?? null) : null;
 
+        // we're at the end of the line!
         if (empty($lastIndexes) || !is_array($lastIndexes)) {
             $valid = false;
         }
@@ -182,15 +180,19 @@ try {
         $minDate = (string)array_key_last($resultsByDate);
 
         foreach ($resultsByDate as $date => $output) {
-            if (null === $pageStream) {
-                /** @var resource $pageResource */
-                $pageResource = fopen(sprintf(__DIR__ . '/../data/raw-data/%s.txt', $date), 'w');
-                $pageStream = new Stream($pageResource);
+            // write the JSON document as a line
+            if (count($output) > 0) {
+                if (null === $pageStream) {
+                    /** @var resource $pageResource */
+                    $pageResource = fopen(sprintf(__DIR__ . '/../data/raw-data/%s.txt', $date), 'w');
+                    $pageStream = new Stream($pageResource);
+                }
+
+                $pageStream->write((json_encode($output) ?: '[]') . PHP_EOL);
             }
 
-            $pageStream->write((json_encode($output) ?: '[]') . PHP_EOL);
-
-            if ($date !== $minDate) {
+            // our output stream is no longer valid. Write to a new file next time
+            if (null !== $pageStream && $date !== $minDate) {
                 $pageStream->close();
                 $pageStream = null;
             }

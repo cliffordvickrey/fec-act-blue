@@ -15,6 +15,7 @@ echo '[2] Generate CSV files already fetched from the OpenFEC API' . PHP_EOL;
 echo '[3] Regenerate all possible CSV columns using data already fetched from the OpenFEC API' . PHP_EOL;
 
 $valid = false;
+
 do {
     echo ': ';
     $input = fgets(STDIN);

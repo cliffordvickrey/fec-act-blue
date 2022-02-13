@@ -11,10 +11,6 @@ chdir(__DIR__);
 
 require_once __DIR__ . '/../vendor/autoload.php';
 
-$chunks = 0;
-$sizeInChunk = 0;
-$sizePerChunk = 10000;
-
 $columnsFile = __DIR__ . '/../data/columns.json';
 
 if (!is_file($columnsFile)) {
@@ -36,61 +32,84 @@ $files = glob(__DIR__ . '/../data/raw-data/*.txt') ?: [];
 
 sort($files);
 
+$outputFile = '';
 $outputResource = null;
+$slug = null;
 
 foreach ($files as $file) {
-    /** @var resource $resource */
-    $resource = fopen($file, 'r');
+    $basename = basename($file, '.txt');
 
-    while (false !== ($line = fgets($resource))) {
-        $rows = json_decode($line, true);
+    $parts = array_pad(explode('-', $basename), 2, '');
 
-        if (!is_array($rows)) {
-            $rows = [];
-        }
+    list ($year, $month) = $parts;
 
-        foreach ($rows as $row) {
-            $data = Utilities::extractDataFromRow($row);
+    if (!is_numeric($year) || !is_numeric($month)) {
+        continue;
+    }
 
-            if ($sizeInChunk > $sizePerChunk) {
-                if (null !== $outputResource) {
-                    fclose($outputResource);
-                }
+    if ("$year-$month" !== $slug) {
+        $slug = "$year-$month";
+        $outputFile = sprintf(__DIR__ . '/../data/output/act-blue-%s.csv', $slug);
 
-                $outputResource = null;
-                $sizeInChunk = 0;
-            }
-
-            if (null === $outputResource) {
-                /** @var resource $outputResource */
-                $outputResource = fopen(sprintf(__DIR__ . '/../data/output/chunk%04d.csv', ++$chunks), 'w');
-                if (false == fputcsv($outputResource, $columns)) {
-                    throw new RuntimeException('There was an error outputting to a CSV file');
-                }
-            }
-
-            $reshaped = $template;
-
-            foreach ($data as $key => $value) {
-                if (isset($reshaped[$key])) {
-                    $reshaped[$key] = $value;
-                }
-            }
-
-            if (false === fputcsv($outputResource, array_values($reshaped))) {
-                throw new RuntimeException('There was an error outputting to a CSV file');
-            }
-
-            $sizeInChunk++;
+        if (null !== $outputResource) {
+            fclose($outputResource);
+            $outputResource = null;
         }
     }
 
-    if (!feof($resource)) {
-        $msg = sprintf('There was an error reading from %s', $file);
-        throw new RuntimeException($msg);
-    }
+    /** @var resource $inputResource */
+    $inputResource = fopen($file, 'r');
 
-    fclose($resource);
+    try {
+        if (null === $outputResource) {
+            /** @var resource $outputResource */
+            $outputResource = fopen($outputFile, 'w');
+            if (false == fputcsv($outputResource, $columns)) {
+                throw new RuntimeException("There was an error outputting column headers to $outputFile");
+            }
+        }
+
+        while (false !== ($line = fgets($inputResource))) {
+            $rows = json_decode($line, true);
+
+            if (!is_array($rows)) {
+                $rows = [];
+            }
+
+            foreach ($rows as $row) {
+                $data = Utilities::extractDataFromRow($row);
+
+                $reshaped = $template;
+
+                foreach ($data as $key => $value) {
+                    if (isset($reshaped[$key])) {
+                        $reshaped[$key] = $value;
+                        continue;
+                    }
+
+                    throw new UnexpectedValueException("Unexpected column, '$key'");
+                }
+
+                if (false === fputcsv($outputResource, array_values($reshaped))) {
+                    throw new RuntimeException("There was an error outputting data $outputFile");
+                }
+            }
+        }
+
+        if (!feof($inputResource)) {
+            $msg = sprintf('There was an error reading from %s', $file);
+            throw new RuntimeException($msg);
+        }
+    } catch (Throwable $ex) {
+        if (null !== $outputResource) {
+            fclose($outputResource);
+        }
+
+        /** @noinspection PhpUnhandledExceptionInspection */
+        throw $ex;
+    } finally {
+        fclose($inputResource);
+    }
 }
 
 if (null !== $outputResource) {

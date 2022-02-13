@@ -28,7 +28,7 @@ $logResource = fopen(__DIR__ . sprintf('/../data/log/log%d.log', time()), 'w');
 $logStream = new Stream($logResource);
 $maxDate = '2019-12-31';
 $maxTries = 20;
-$minDate = '2019-01-01';
+$minDate = '2019-02-09';
 $pageStream = null;
 $url = 'https://api.open.fec.gov/v1/schedules/schedule_a/';
 $valid = true;
@@ -114,8 +114,8 @@ try {
             echo 'error!' . PHP_EOL;
 
             if (429 === $logParams[1]) {
-                echo "The rate limit has been exceeded. Let's wait an hour ..." . PHP_EOL;
-                sleep(3600); // wait an hour before trying again
+                echo "The rate limit has been exceeded. Let's wait twenty minutes ..." . PHP_EOL;
+                sleep(1200); // wait twenty minutes before trying again
             } else {
                 echo 'Request failed! Retrying in 500 milliseconds ...' . PHP_EOL;
                 usleep(500000); // wait half a second before trying again

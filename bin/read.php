@@ -16,6 +16,12 @@ chdir(__DIR__);
 
 require_once __DIR__ . '/../vendor/autoload.php';
 
+// region get CLI params
+
+$params = $params ?? ($argv ?? []);
+
+// endregion
+
 // region script variables
 
 $client = new Client();
@@ -37,8 +43,8 @@ $valid = true;
 
 // region CLI params
 
-if (is_string($argv[1] ?? null) && '' !== trim($argv[1])) {
-    $minDate = trim($argv[1]);
+if (is_string($params[1] ?? null) && '' !== trim($params[1])) {
+    $minDate = trim($params[1]);
 }
 
 if (!Utilities::isDateValid($minDate)) {
@@ -46,8 +52,8 @@ if (!Utilities::isDateValid($minDate)) {
     exit(1);
 }
 
-if (is_string($argv[2] ?? null) && '' !== trim($argv[2])) {
-    $maxDate = trim($argv[2]);
+if (is_string($params[2] ?? null) && '' !== trim($params[2])) {
+    $maxDate = trim($params[2]);
 }
 
 if (!Utilities::isDateValid($maxDate)) {

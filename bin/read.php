@@ -24,7 +24,7 @@ $credentials = require __DIR__ . '/../data/credentials.php';
 $hadError = false;
 $lastIndexes = null;
 /** @var resource $logResource */
-$logResource = fopen(__DIR__ . '/../data/log/request-log.log', 'a');
+$logResource = fopen(__DIR__ . '/../data/log/request.log', 'a');
 $logStream = new Stream($logResource);
 $maxDate = '2019-12-31';
 $maxTries = 20;
@@ -85,12 +85,12 @@ try {
 
         $logParams = [date(DateTimeInterface::RFC3339), 999, 0, $url, http_build_query($query), PHP_EOL];
 
-        $oldTime = microtime(true);
-
         $lastEx = null;
 
         for ($i = 0; $i < $maxTries; $i++) {
             echo sprintf('Sending request (contribution_receipt_date = "%s") ... ', $minDate);
+
+            $oldTime = microtime(true);
 
             try {
                 $response = $client->get($url, [

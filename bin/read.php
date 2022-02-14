@@ -16,12 +16,6 @@ chdir(__DIR__);
 
 require_once __DIR__ . '/../vendor/autoload.php';
 
-// region get CLI params
-
-$params = $params ?? ($argv ?? []);
-
-// endregion
-
 // region script variables
 
 $client = new Client();
@@ -42,6 +36,8 @@ $valid = true;
 // endregion
 
 // region CLI params
+
+$params = $params ?? ($argv ?? []);
 
 if (is_string($params[1] ?? null) && '' !== trim($params[1])) {
     $minDate = trim($params[1]);

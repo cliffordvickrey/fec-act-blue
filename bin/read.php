@@ -116,7 +116,7 @@ try {
                 $lastEx = $ex;
             } finally {
                 $logParams[2] = str_pad(sprintf('%gs', round(microtime(true) - $oldTime, 2)), 7, ' ', STR_PAD_LEFT);
-                $logStream->write(vsprintf('%s %d %s %s?%s%s', $logParams));
+                $logStream->write(vsprintf('%s %d %s GET %s?%s%s', $logParams));
             }
 
             if (null === $lastEx) {

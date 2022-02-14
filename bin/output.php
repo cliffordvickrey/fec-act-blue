@@ -91,7 +91,7 @@ foreach ($files as $file) {
                 }
 
                 if (false === fputcsv($outputResource, array_values($reshaped))) {
-                    throw new RuntimeException("There was an error outputting data $outputFile");
+                    throw new RuntimeException("There was an error outputting data to $outputFile");
                 }
             }
         }

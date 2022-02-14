@@ -169,9 +169,6 @@ try {
 
         // try to resolve the last index params to send to the next request
         $pagination = $data['pagination'] ?? null;
-
-        $lastIndexes = null;
-
         $lastIndexes = is_array($pagination) ? ($pagination['last_indexes'] ?? null) : null;
 
         // we're at the end of the line!

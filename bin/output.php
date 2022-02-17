@@ -32,21 +32,67 @@ $files = glob(__DIR__ . '/../data/raw-data/*.txt') ?: [];
 
 sort($files);
 
+$days = 0;
 $description = '';
+$maxDate = false;
+$minDate = false;
 $observations = 0;
 $outputFile = '';
 $outputResource = null;
 $presidentialObservations = 0;
 $slug = null;
 
+// region params
+
+$params = $params ?? ($argv ?? []);
+
+if (is_string($params[1] ?? null) && '' !== trim($params[1])) {
+    $minDate = trim($params[1]);
+}
+
+if (false !== $minDate && !Utilities::isDateValid($minDate)) {
+    echo "'$minDate' is not a valid value for min_date. Expected date formatted as 'Y-m-d'" . PHP_EOL;
+    exit(1);
+}
+
+if (is_string($params[2] ?? null) && '' !== trim($params[2])) {
+    $maxDate = trim($params[2]);
+}
+
+if (false !== $maxDate && !Utilities::isDateValid($maxDate)) {
+    echo "'$maxDate' is not a valid value for max_date. Expected date formatted as 'Y-m-d'" . PHP_EOL;
+    exit(1);
+}
+
+$minDateTime = $minDate ? DateTimeImmutable::createFromFormat('Y-m-d', $minDate) : false;
+$maxDateTime = $maxDate ? DateTimeImmutable::createFromFormat('Y-m-d', $maxDate) : false;
+
+if ($maxDateTime) {
+    $maxDateTime = $maxDateTime->setTime(0, 0);
+}
+
+if ($minDateTime) {
+    $minDateTime = $minDateTime->setTime(0, 0);
+}
+
+// end region
+
 foreach ($files as $file) {
     $basename = basename($file, '.txt');
 
-    $parts = array_pad(explode('-', $basename), 2, '');
+    $parts = array_pad(explode('-', $basename), 3, '');
 
-    list ($year, $month) = $parts;
+    list ($year, $month, $day) = $parts;
 
-    if (!is_numeric($year) || !is_numeric($month)) {
+    if (!is_numeric($year) || !is_numeric($month) || !is_numeric($day)) {
+        continue;
+    }
+
+    /** @var DateTimeImmutable $dateTime */
+    $dateTime = DateTimeImmutable::createFromFormat('Y-m-d', "$year-$month-$day");
+    $dateTime = $dateTime->setTime(0, 0);
+
+    if (($minDateTime && $dateTime < $minDateTime) || ($maxDateTime && $dateTime > $maxDateTime)) {
         continue;
     }
 
@@ -57,7 +103,8 @@ foreach ($files as $file) {
         if (null !== $outputResource) {
             $percentPresident = sprintf('%g', round($presidentialObservations / ($observations ?: 1), 4) * 100) . '%';
             echo sprintf(
-                '%s: %d observations (%s presidential)%s',
+                '%s: %s days, %d observations (%s presidential)%s',
+                $days,
                 $description,
                 $observations,
                 $percentPresident,
@@ -67,11 +114,13 @@ foreach ($files as $file) {
             $outputResource = null;
         }
 
-        $dateTime = DateTimeImmutable::createFromFormat('Y-m-d', $slug . '-01');
-        $description = $dateTime ? $dateTime->format('M Y') : '???';
+        $days = 0;
+        $description = $dateTime->format('M Y');
         $observations = 0;
         $presidentialObservations = 0;
     }
+
+    $days++;
 
     /** @var resource $inputResource */
     $inputResource = fopen($file, 'r');
@@ -138,6 +187,13 @@ foreach ($files as $file) {
 
 if (null !== $outputResource) {
     $percentPresident = sprintf('%g', round($presidentialObservations / ($observations ?: 1), 4) * 100) . '%';
-    echo sprintf('%s: %d observations (%s presidential)%s', $description, $observations, $percentPresident, PHP_EOL);
+    echo sprintf(
+        '%s: %s days, %d observations (%s presidential)%s',
+        $days,
+        $description,
+        $observations,
+        $percentPresident,
+        PHP_EOL
+    );
     fclose($outputResource);
 }

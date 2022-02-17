@@ -52,6 +52,10 @@ switch ($input) {
             $minDate = DateTimeImmutable::createFromFormat('Y-m-d', $input);
 
             if (false !== $minDate) {
+                $minDate = $minDate->setTime(0, 0);
+            }
+
+            if (false !== $minDate) {
                 $valid = true;
             } else {
                 echo 'Invalid date' . PHP_EOL;
@@ -73,6 +77,10 @@ switch ($input) {
             $input = trim($input);
 
             $maxDate = DateTimeImmutable::createFromFormat('Y-m-d', $input);
+
+            if (false !== $maxDate) {
+                $maxDate = $maxDate->setTime(0, 0);
+            }
 
             if (false !== $maxDate && $maxDate >= $minDate) {
                 $valid = true;
@@ -101,12 +109,88 @@ switch ($input) {
 
         break;
     case '2':
-        call_user_func(function (): never {
-            echo 'Generating output CSVs (this may take a while!)' . PHP_EOL;
+        $params = [];
+
+        $valid = false;
+
+        do {
+            echo 'Minimum contribution date (YYYY-MM-DD) [optional]: ';
+            $input = fgets(STDIN);
+
+            if (false === $input) {
+                throw new RuntimeException('Could not fetch user input');
+            }
+
+            $input = trim($input);
+
+            if ('' === $input) {
+                $minDate = false;
+                $valid = true;
+            } else {
+                $minDate = DateTimeImmutable::createFromFormat('Y-m-d', $input);
+
+                if (false !== $minDate) {
+                    $minDate = $minDate->setTime(0, 0);
+                }
+
+                if (false !== $minDate) {
+                    $valid = true;
+                } else {
+                    echo 'Invalid date' . PHP_EOL;
+                }
+            }
+        } while (!$valid);
+
+        $params[] = $minDate ? $minDate->format('Y-m-d') : '';
+
+        $valid = false;
+
+        do {
+            echo 'Maximum contribution date (YYYY-MM-DD) [optional]: ';
+            $input = fgets(STDIN);
+
+            if (false === $input) {
+                throw new RuntimeException('Could not fetch user input');
+            }
+
+            $input = trim($input);
+
+            if ('' === $input) {
+                $maxDate = false;
+                $valid = true;
+            } else {
+                $maxDate = DateTimeImmutable::createFromFormat('Y-m-d', $input);
+
+                if (false !== $maxDate) {
+                    $maxDate = $maxDate->setTime(0, 0);
+                }
+
+                if (false !== $maxDate && $maxDate >= $minDate) {
+                    $valid = true;
+                } elseif (false !== $maxDate) {
+                    echo 'Maximum date must be equal to or greater than the minimum date' . PHP_EOL;
+                } else {
+                    echo 'Invalid date' . PHP_EOL;
+                }
+            }
+        } while (!$valid);
+
+        $params[] = $maxDate ? $maxDate->format('Y-m-d') : '';
+
+        /**
+         * @param list<mixed> $params
+         * @param list<mixed> $cliParams
+         * @return never
+         */
+        $outputClosure = function (array $params, array $cliParams): never {
+            array_unshift($params, $cliParams[0] ?? '');
             require __DIR__ . '/output.php';
             echo 'Done!' . PHP_EOL;
             exit(0);
-        });
+        };
+
+        call_user_func($outputClosure, $params, $argv ?? []);
+
         break;
     default:
         call_user_func(function (): never {

@@ -32,8 +32,11 @@ $files = glob(__DIR__ . '/../data/raw-data/*.txt') ?: [];
 
 sort($files);
 
+$description = '';
+$observations = 0;
 $outputFile = '';
 $outputResource = null;
+$presidentialObservations = 0;
 $slug = null;
 
 foreach ($files as $file) {
@@ -52,9 +55,22 @@ foreach ($files as $file) {
         $outputFile = sprintf(__DIR__ . '/../data/output/act-blue-%s.csv', $slug);
 
         if (null !== $outputResource) {
+            $percentPresident = sprintf('%g', round($presidentialObservations / ($observations ?: 1), 4) * 100) . '%';
+            echo sprintf(
+                '%s: %d observations (%s presidential)%s',
+                $description,
+                $observations,
+                $percentPresident,
+                PHP_EOL
+            );
             fclose($outputResource);
             $outputResource = null;
         }
+
+        $dateTime = DateTimeImmutable::createFromFormat('Y-m-d', $slug . '-01');
+        $description = $dateTime ? $dateTime->format('M Y') : '???';
+        $observations = 0;
+        $presidentialObservations = 0;
     }
 
     /** @var resource $inputResource */
@@ -93,6 +109,14 @@ foreach ($files as $file) {
                 if (false === fputcsv($outputResource, array_values($reshaped))) {
                     throw new RuntimeException("There was an error outputting data to $outputFile");
                 }
+
+                $observations++;
+
+                $candidateId = $data['candidate_id'] ?? null;
+
+                if (is_string($candidateId) && str_starts_with($candidateId, 'P')) {
+                    $presidentialObservations++;
+                }
             }
         }
 
@@ -113,5 +137,7 @@ foreach ($files as $file) {
 }
 
 if (null !== $outputResource) {
+    $percentPresident = sprintf('%g', round($presidentialObservations / ($observations ?: 1), 4) * 100) . '%';
+    echo sprintf('%s: %d observations (%s presidential)%s', $description, $observations, $percentPresident, PHP_EOL);
     fclose($outputResource);
 }

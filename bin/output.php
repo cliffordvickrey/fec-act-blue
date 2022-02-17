@@ -103,7 +103,7 @@ foreach ($files as $file) {
         if (null !== $outputResource) {
             $percentPresident = sprintf('%g', round($presidentialObservations / ($observations ?: 1), 4) * 100) . '%';
             echo sprintf(
-                '%s: %s days, %d observations (%s presidential)%s',
+                '%s: %d days, %d observations (%s presidential)%s',
                 $days,
                 $description,
                 $observations,
@@ -188,7 +188,7 @@ foreach ($files as $file) {
 if (null !== $outputResource) {
     $percentPresident = sprintf('%g', round($presidentialObservations / ($observations ?: 1), 4) * 100) . '%';
     echo sprintf(
-        '%s: %s days, %d observations (%s presidential)%s',
+        '%s: %d days, %d observations (%s presidential)%s',
         $days,
         $description,
         $observations,

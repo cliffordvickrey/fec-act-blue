@@ -16,7 +16,7 @@ use function ksort;
 use function strlen;
 use function substr;
 
-class Utilities
+final class Utilities
 {
     /**
      * Flattens a JSON payload

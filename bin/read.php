@@ -31,7 +31,6 @@ $maxTries = 20;
 $minDate = '2019-01-01';
 $pageStream = null;
 $rate = 2.0;
-$stopTime = 0.0;
 $url = 'https://api.open.fec.gov/v1/schedules/schedule_a/';
 $valid = true;
 
@@ -90,9 +89,10 @@ try {
         $lastEx = null;
 
         for ($i = 0; $i < $maxTries; $i++) {
+            $oldStartTime = $startTime ?? 0.0;
             $startTime = microtime(true);
 
-            $coolDown = $startTime - $stopTime;
+            $coolDown = $startTime - $oldStartTime;
 
             if ($coolDown < $rate) {
                 echo sprintf('Cooling down for %g seconds', $coolDown) . PHP_EOL;

@@ -17,6 +17,8 @@ use function array_values;
 use function implode;
 use function is_numeric;
 use function is_scalar;
+use function md5;
+use function serialize;
 use function str_pad;
 use function strlen;
 use function strtoupper;
@@ -98,21 +100,11 @@ final class Contributor implements Stringable
     /**
      * @return string
      */
-    public function __toString(): string
+    public function toHash(): string
     {
-        $parts = array_values(array_filter([
-            "#$this->id",
-            '-',
-            $this->name,
-            '-',
-            $this->address . ('' === $this->address && '' === $this->city ? '' : ','),
-            $this->city,
-            $this->state,
-            $this->zip . ('' === $this->zipPlusFour ? '' : "-$this->zipPlusFour"),
-            '' === $this->occupation ? '' : "($this->occupation)"
-        ]));
-
-        return implode(' ', $parts);
+        $data = $this->toArray();
+        unset($data['id']);
+        return md5(serialize($data));
     }
 
     /**
@@ -140,5 +132,25 @@ final class Contributor implements Stringable
             'zipPlusFour' => $this->zip,
             'occupation' => $this->occupation
         ];
+    }
+
+    /**
+     * @return string
+     */
+    public function __toString(): string
+    {
+        $parts = array_values(array_filter([
+            "#$this->id",
+            '-',
+            $this->name,
+            '-',
+            $this->address . ('' === $this->address && '' === $this->city ? '' : ','),
+            $this->city,
+            $this->state,
+            $this->zip . ('' === $this->zipPlusFour ? '' : "-$this->zipPlusFour"),
+            '' === $this->occupation ? '' : "($this->occupation)"
+        ]));
+
+        return implode(' ', $parts);
     }
 }

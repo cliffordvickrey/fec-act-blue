@@ -217,6 +217,10 @@ foreach x of local files {
     rename contributor__street_2 com_street_2
     rename contributor__treasurer_name com_treasurer_name
     rename contributor__zip com_zip
+	rename contributor__affiliated_committe com_affiliated_committee 
+	rename contributor__candidate_ids__0 com_candidate_ids_00
+	rename contributor__candidate_ids__1 com_candidate_ids_01
+	rename contributor__candidate_ids__2 com_candidate_ids_02
 
     // amendment indicator
     gen byte amendment = .
@@ -248,7 +252,7 @@ foreach x of local files {
     replace _com_committee_type = 15 if com_committee_type == "Z"
     drop com_committee_type com_committee_type_full 
     rename _com_committee_type com_committee_type
-
+	
     // contributor committee designation
     gen byte _com_designation = .
     replace _com_designation = 0 if com_designation == "A"
@@ -305,6 +309,59 @@ foreach x of local files {
     replace _com_organization_type = 5 if com_organization_type == "W"
     drop com_organization_type com_organization_type_full
     rename _com_organization_type com_organization_type
+	
+	// contributor party
+	gen _com_party = .
+	replace _com_party = 0 if com_party == "DEM"
+	replace _com_party = 1 if com_party == "REP"	
+	replace _com_party = 2 if com_party == "AIC"
+	replace _com_party = 3 if com_party == "AIP"
+	replace _com_party = 4 if com_party == "AMP"
+	replace _com_party = 5 if com_party == "APF"
+	replace _com_party = 6 if com_party == "CIT"
+	replace _com_party = 7 if com_party == "CMP"
+	replace _com_party = 8 if com_party == "COM"
+	replace _com_party = 9 if com_party == "CRV"
+	replace _com_party = 10 if com_party == "CST"
+	replace _com_party = 11 if com_party == "DC "
+	replace _com_party = 12 if com_party == "DFL"
+	replace _com_party = 13 if com_party == "FLP"
+	replace _com_party = 14 if com_party == "GRE"
+	replace _com_party = 15 if com_party == "GWP"
+	replace _com_party = 16 if com_party == "HRP"
+	replace _com_party = 17 if com_party == "IAP"
+	replace _com_party = 18 if com_party == "ICD"
+	replace _com_party = 19 if com_party == "IGD"
+	replace _com_party = 20 if com_party == "IND"
+	replace _com_party = 21 if com_party == "LAB"
+	replace _com_party = 22 if com_party == "LBL"
+	replace _com_party = 23 if com_party == "LBR"
+	replace _com_party = 24 if com_party == "LBU"
+	replace _com_party = 25 if com_party == "LFT"
+	replace _com_party = 26 if com_party == "LIB"
+	replace _com_party = 27 if com_party == "LRU"
+	replace _com_party = 28 if com_party == "NAP"
+	replace _com_party = 29 if com_party == "NDP"
+	replace _com_party = 30 if com_party == "NLP"
+	replace _com_party = 31 if com_party == "PAF"
+	replace _com_party = 32 if com_party == "PFD"
+	replace _com_party = 33 if com_party == "POP"
+	replace _com_party = 34 if com_party == "PPD"
+	replace _com_party = 35 if com_party == "PPY"
+	replace _com_party = 36 if com_party == "REF"
+	replace _com_party = 37 if com_party == "RTL"
+	replace _com_party = 38 if com_party == "SLP"
+	replace _com_party = 39 if com_party == "SUS"
+	replace _com_party = 40 if com_party == "SWP"
+	replace _com_party = 41 if com_party == "THD"
+	replace _com_party = 42 if com_party == "TWR"
+	replace _com_party = 43 if com_party == "TX "
+	replace _com_party = 44 if com_party == "USP"
+	replace _com_party = 45 if com_party == "WFP"
+	replace _com_party = 45 if com_party == "WOR"
+	replace _com_party = 46 if com_party == "OTH"
+	drop com_party com_party_full
+	rename _com_party com_party
 
     // contribution receipt date
     gen _crd = contribution_receipt_date
@@ -313,6 +370,66 @@ foreach x of local files {
     format _contribution_receipt_date %td
     drop _crd contribution_receipt_date
     rename _contribution_receipt_date contribution_receipt_date
+
+	// filing form
+	gen _filing_form = .
+	replace _filing_form = 0 if filing_form == "F1"
+	replace _filing_form = 1 if filing_form == "F1M"
+	replace _filing_form = 2 if filing_form == "F2"
+	replace _filing_form = 3 if filing_form == "F3"
+	replace _filing_form = 4 if filing_form == "F3P"
+	replace _filing_form = 5 if filing_form == "F3X"
+	replace _filing_form = 6 if filing_form == "F3L"
+	replace _filing_form = 7 if filing_form == "F4"
+	replace _filing_form = 8 if filing_form == "F5"
+	replace _filing_form = 9 if filing_form == "F24"
+	replace _filing_form = 10 if filing_form == "F6"
+	replace _filing_form = 11 if filing_form == "F7"
+	replace _filing_form = 12 if filing_form == "F8"
+	replace _filing_form = 13 if filing_form == "F9"
+	replace _filing_form = 14 if filing_form == "F13"
+	replace _filing_form = 15 if filing_form == "F99"
+	replace _filing_form = 16 if filing_form == "F10"
+	replace _filing_form = 17 if filing_form == "F11"
+	replace _filing_form = 18 if filing_form == "F12"
+	replace _filing_form = 19 if filing_form == "RFAI"
+	drop filing_form
+	rename _filing_form filing_form
+	
+	// line number
+	gen _line_number = .
+	replace _line_number = 0 if filing_form == 3 & line_number == "11AI"
+	replace _line_number = 1 if filing_form == 3 & line_number == "11B"
+	replace _line_number = 2 if filing_form == 3 & line_number == "11C"
+	replace _line_number = 3 if filing_form == 3 & line_number == "11D"
+	replace _line_number = 4 if filing_form == 3 & line_number == "12"
+	replace _line_number = 5 if filing_form == 3 & line_number == "13A"
+	replace _line_number = 6 if filing_form == 3 & line_number == "13B"
+	replace _line_number = 7 if filing_form == 3 & line_number == "14"
+	replace _line_number = 8 if filing_form == 3 & line_number == "15"
+	replace _line_number = 9 if filing_form == 4 & line_number == "16"
+	replace _line_number = 10 if filing_form == 4 & line_number == "17A"
+	replace _line_number = 11 if filing_form == 4 & line_number == "17B"
+	replace _line_number = 12 if filing_form == 4 & line_number == "17C"
+	replace _line_number = 13 if filing_form == 4 & line_number == "17D"
+	replace _line_number = 14 if filing_form == 4 & line_number == "18"
+	replace _line_number = 15 if filing_form == 4 & line_number == "19A"
+	replace _line_number = 16 if filing_form == 4 & line_number == "19B"
+	replace _line_number = 17 if filing_form == 4 & line_number == "20A"
+	replace _line_number = 18 if filing_form == 4 & line_number == "20B"
+	replace _line_number = 19 if filing_form == 4 & line_number == "20C"
+	replace _line_number = 20 if filing_form == 4 & line_number == "21"
+	replace _line_number = 21 if filing_form == 5 & line_number == "11AI"
+	replace _line_number = 22 if filing_form == 5 & line_number == "11B"
+	replace _line_number = 23 if filing_form == 5 & line_number == "11C"
+	replace _line_number = 24 if filing_form == 5 & line_number == "12"
+	replace _line_number = 25 if filing_form == 5 & line_number == "13"
+	replace _line_number = 26 if filing_form == 5 & line_number == "14"
+	replace _line_number = 27 if filing_form == 5 & line_number == "15"
+	replace _line_number = 28 if filing_form == 5 & line_number == "16"
+	replace _line_number = 29 if filing_form == 5 & line_number == "17"
+	drop line_number line_number_label
+	rename _line_number line_number
 
     // load date
     gen _ld = load_date
@@ -429,8 +546,40 @@ foreach x of local files {
     replace _receipt_type = 100 if receipt_type == "42Y"
     replace _receipt_type = 101 if receipt_type == "42T"
     replace _receipt_type = 102 if receipt_type == "42Z"
-    drop receipt_type receipt_type_full
+    drop receipt_type receipt_type_desc
     rename _receipt_type receipt_type
+
+    // recipient committee designation
+    gen byte _recipient_committee_designation = .
+    replace _recipient_committee_designation = 0 if recipient_committee_designation == "A"
+    replace _recipient_committee_designation = 1 if recipient_committee_designation == "J"
+    replace _recipient_committee_designation = 2 if recipient_committee_designation == "P"
+    replace _recipient_committee_designation = 3 if recipient_committee_designation == "U"
+    replace _recipient_committee_designation = 4 if recipient_committee_designation == "B"
+    replace _recipient_committee_designation = 5 if recipient_committee_designation == "D"
+    drop recipient_committee_designation
+    rename _recipient_committee_designation recipient_committee_designation
+
+    // recipient committee type
+    gen byte _recipient_committee_type = .
+    replace _recipient_committee_type = 0 if recipient_committee_type == "C"
+    replace _recipient_committee_type = 1 if recipient_committee_type == "D"
+    replace _recipient_committee_type = 2 if recipient_committee_type == "E"
+    replace _recipient_committee_type = 3 if recipient_committee_type == "H"
+    replace _recipient_committee_type = 4 if recipient_committee_type == "I"
+    replace _recipient_committee_type = 5 if recipient_committee_type == "N"
+    replace _recipient_committee_type = 6 if recipient_committee_type == "O"
+    replace _recipient_committee_type = 7 if recipient_committee_type == "P"
+    replace _recipient_committee_type = 8 if recipient_committee_type == "Q"
+    replace _recipient_committee_type = 9 if recipient_committee_type == "S"
+    replace _recipient_committee_type = 10 if recipient_committee_type == "U"
+    replace _recipient_committee_type = 11 if recipient_committee_type == "V"
+    replace _recipient_committee_type = 12 if recipient_committee_type == "W"
+    replace _recipient_committee_type = 13 if recipient_committee_type == "X"
+    replace _recipient_committee_type = 14 if recipient_committee_type == "Y"
+    replace _recipient_committee_type = 15 if recipient_committee_type == "Z"
+    drop recipient_committee_type 
+    rename _recipient_committee_type recipient_committee_type
 
     // report type
     gen byte _report_type = .
@@ -524,7 +673,7 @@ label define committee_designation 0 "A authorized by a candidate" ///
     3 "U unauthorized" ///
     4 "B lobbyist/registrant PAC" ///
     5 "D leadership PAC"
-label values com_designation committee_designation
+label values com_designation recipient_committee_designation committee_designation
 
 label define committee_type 0 "C communication cost" ///
     1 "D delegate" ///
@@ -542,7 +691,7 @@ label define committee_type 0 "C communication cost" ///
     13 "X party, nonqualified" ///
     14 "Y party, qualified" ///
     15 "Z national party non-federal account"
-label values com_committee_type committee_type
+label values com_committee_type recipient_committee_type committee_type
 
 label define filing_frequency 0 "A Administratively terminated" ///
     1 "D Debt" ///
@@ -552,6 +701,60 @@ label define filing_frequency 0 "A Administratively terminated" ///
     5 "W Waived"
 label values com_filing_frequency filing_frequency
 
+label define form_type 0 "F1 Statements Of Organization (Form 1)" ///
+	1 "F1M Multicandidate status (Form 1M)" ///
+	2 "F2 Statements Of Candidacy (Form 2)" ///
+	3 "F3 Congressional candidate financial reports (Form 3)" ///
+	4 "F3P Presidential financial reports (Form 3P)" ///
+	5 "F3X PAC and party financial reports (Form 3X)" ///
+	6 "F3L Bundled contributions reports (Form 3L)" ///
+	7 "F4 Convention financial reports (Form 4)" ///
+	8 "F5 Independent expenditure reports and notices (by a person or group) (Form 5)" ///
+	9 "F24 Independent expenditure reports and notices (by a registered committee) (Form 24)" ///
+	10 "F6 Contributions and loans notices (Form 6)" ///
+	11 "F7 Communication cost reports (Form 7)" ///
+	12 "F8 Debt settlement plans (Form 8)" ///
+	13 "F9 Electioneering communications notices (Form 9)" ///
+	14 "F13 Inaugural committee donation reports (Form 13)" ///
+	15 "F99 Miscellaneous submission (Form 99)" ///
+	16 "F10 Expenditure of personal funds notices (Form 10)" ///
+	17 "F11 Opposition personal funds notices (Form 11)" ///
+	18 "F12 Suspension of increased limits notices (Form 12)" ///
+	19 "RFAI Request For Additional Information (RFAI)"
+label values filing_form form_type
+
+label define line_number 0 "F3-11AI Contributions from individuals (Line 11ai)" ///
+	1 "F3-11B Contributions from political party committees (Line 11b)" ///
+	2 "F3-11C Contributions from other political committees (Line 11c)" ///
+	3 "F3-11D Contributions from the candidate (Line 11d)" ///
+	4 "F3-12  Transfers from authorized committees (Line 12)" ///
+	5 "F3-13A Loans received from the candidate (Line 13a)" ///
+	6 "F3-13B All other loans (Line 13b)" ///
+	7 "F3-14  Offsets to operating expenditures (Line 14)" ///
+	8 "F3-15  Other receipts (Line 15)" ///
+	9 "F3P-16 Federal funds (Line 16)" ///
+	10 "F3P-17A Contributions from individuals (Line 17ai)" ///
+	11 "F3P-17B Contributions from political party committees (Line 17b)" ///
+	12 "F3P-17C Contributions from other political committees (Line 17c)" ///
+	13 "F3P-17D Contributions from the candidate (Line 17d)" ///
+	14 "F3P-18 Transfers from other authorized committees (Line 18)" ///
+	15 "F3P-19A Loans received from candidate (Line 19a)" ///
+	16 "F3P-19B Other loans (Line 19b)" ///
+	17 "F3P-20A Offsets to operating expenditures - operating (Line 20a)" ///
+	18 "F3P-20B Offsets to operating expenditures - fundraising (Line 20b)" ///
+	19 "F3P-20C Offsets to operating expenditures - legal and accounting (Line 20c)" ///
+	20 "F3P-21 Other receipts (Line 21)" ///
+	21 "F3X-11AI Contributions from individuals (Line 11ai)" ///
+	22 "F3X-11B Contributions from political party committees (Line 11b)" ///
+	23 "F3X-11C Contributions from other political committees (Line 11c)" ///
+	24 "F3X-12 Transfers from affiliated committees (Line 12)" ///
+	25 "F3X-13 Loans received (Line 13)" ///
+	26 "F3X-14 Loan repayments received (Line 14)" ///
+	27 "F3X-15 Offsets to operating expenditures (Line 15)" ///
+	28 "F3X-16 Refunds of contributions made to federal candidates and other political committees (Line 16)" ///
+	29 "F3X-17 Other federal receipts (Line 17)"
+label values line_number line_number
+
 label define organization_type 0 "C corporation" ///
     1 "L labor organization" ///
     2 "M membership organization" ///
@@ -559,6 +762,55 @@ label define organization_type 0 "C corporation" ///
     4 "V cooperative" ///
     5 "W corporation without capital stock"
 label values com_organization_type organization_type
+
+label define party 0 "DEM Democratic" ///
+	1 "REP Republican" ///
+	2 "AIC American Independent Conservative" ///
+	3 "AIP American Independent Party" ///
+	4 "AMP American Party" ///
+	5 "APF American People's Freedom Party" ///
+	6 "CIT Citizens' Party" ///
+	7 "CMP Commonwealth Party of the US" ///
+	8 "COM Communist Party" ///
+	9 "CRV Conservative Party" ///
+	10 "CST Constitutional" ///
+	11 "DC Democratic/Conservative" ///
+	12 "DFL Democratic-Farm-Labor" ///
+	13 "FLP Freedom Labor Party" ///
+	14 "GRE Green Party" ///
+	15 "GWP George Wallace Party" ///
+	16 "HRP Human Rights Party" ///
+	17 "IAP Independent American Party" ///
+	18 "ICD Independent Conserv. Democratic" ///
+	19 "IGD Industrial Government Party" ///
+	20 "IND Independent" ///
+	21 "LAB US Labor Party" ///
+	22 "LBL Liberal Party" ///
+	23 "LBR Labor Party" ///
+	24 "LBU Liberty Union Party" ///
+	25 "LFT Less Federal Taxes" ///
+	26 "LIB Libertarian" ///
+	27 "LRU La Raza Unida" ///
+	28 "NAP Prohibition Party" ///
+	29 "NDP National Democratic Party" ///
+	30 "NLP Natural Law Party" ///
+	31 "PAF Peace and Freedom" ///
+	32 "PFD Peace Freedom Party" ///
+	33 "POP People Over Politics" ///
+	34 "PPD Protest, Progress, Dignity" ///
+	35 "PPY People's Party" ///
+	36 "REF Reform Party" ///
+	37 "RTL Right to Life" ///
+	38 "SLP Socialist Labor Party" ///
+	39 "SUS Socialist Party USA" ///
+	40 "SWP Socialist Workers Party" ///
+	41 "THD Theo-Dem" ///
+	42 "TWR Taxpayers Without Representation" ///
+	43 "TX Taxpayers" ///
+	44 "USP US People's Party" ///
+	45 "WFP Working Families Party" ///
+	46 "OTH Other"
+label values com_party party
 
 label define receipt_type 0 "10 Contribution to Independent Expenditure-Only Committees (Super PACs), Political Committees with non-contribution accounts (Hybrid PACs) and nonfederal party 'soft money' accounts (1991-2002) from a person (individual, partnership, limited liability company, corporation, labor organization, or any other organization or group of persons)" ///
     1 "10J Memo - Recipient committee's percentage of nonfederal receipt from a person (individual, partnership, limited liability company, corporation, labor organization, or any other organization or group of persons)" ///
@@ -720,6 +972,14 @@ label values report_type report_type
 format image_number %18.0f
 format link_id %19.0f
 format sub_id %19.0f
+
+// merge
+merge m:1 id using "`c(pwd)'\act-blue-contributors.dta", ///
+	keepusing(person_id similarity)
+drop if _merge == 2
+drop _merge
+order id person_id similarity contributor_* candidate_*
+order com_*, last
 
 // compress and save
 sort id

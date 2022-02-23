@@ -30,6 +30,8 @@ $maxDate = '2019-12-31';
 $maxTries = 20;
 $minDate = '2019-01-01';
 $pageStream = null;
+$rate = 2.0;
+$stopTime = 0.0;
 $url = 'https://api.open.fec.gov/v1/schedules/schedule_a/';
 $valid = true;
 
@@ -88,9 +90,16 @@ try {
         $lastEx = null;
 
         for ($i = 0; $i < $maxTries; $i++) {
-            echo sprintf('Sending request (contribution_receipt_date = "%s") ... ', $minDate);
+            $startTime = microtime(true);
 
-            $oldTime = microtime(true);
+            $coolDown = $startTime - $stopTime;
+
+            if ($coolDown < $rate) {
+                echo sprintf('Cooling down for %g seconds', $coolDown) . PHP_EOL;
+                usleep((int)($coolDown * 1000000));
+            }
+
+            echo sprintf('Sending request (contribution_receipt_date = "%s") ... ', $minDate);
 
             try {
                 $response = $client->get($url, [
@@ -115,7 +124,8 @@ try {
             } catch (Throwable $ex) {
                 $lastEx = $ex;
             } finally {
-                $logParams[2] = str_pad(sprintf('%gs', round(microtime(true) - $oldTime, 2)), 7, ' ', STR_PAD_LEFT);
+                $stopTime = microtime(true);
+                $logParams[2] = str_pad(sprintf('%gs', round($stopTime - $startTime, 2)), 7, ' ', STR_PAD_LEFT);
                 $logStream->write(vsprintf('%s %d %s GET %s?%s%s', $logParams));
             }
 

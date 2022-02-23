@@ -5,6 +5,7 @@ declare(strict_types=1);
 
 use CliffordVickrey\FecActBlue\Comparison;
 use CliffordVickrey\FecActBlue\ComparisonOptions;
+use CliffordVickrey\FecActBlue\Contributor;
 use CliffordVickrey\FecActBlue\ContributorIterator;
 
 ini_set('max_execution_time', '0');
@@ -23,31 +24,72 @@ $generator = $iterator->getCsvGenerator();
 $resource = fopen(__DIR__ . '/../data/match/person-ids.csv', 'w');
 fputcsv($resource, ['id', 'person_id', 'similarity', 'info']);
 
-$personId = 0;
+$i = 0;
+/** @var array<string, array{0: Contributor|string, 1: int}> $memo */
+$memo = [];
 
 try {
     foreach ($generator as $a) {
         $matches = [];
 
-        echo '-----------------------------------' . PHP_EOL;
-        echo $a . PHP_EOL;
-        echo '-----------------------------------' . PHP_EOL;
+        $hash = $a->toHash();
 
-        foreach ($iterator as $b) {
-            $comparison = Comparison::fromDyad($a, $b, $options);
+        if (isset($memo[$hash])) {
+            $cache = $memo[$hash];
+            list ($contributor, $personId) = $cache;
 
-            if ($comparison->percent >= $options->threshold) {
-                echo $comparison . PHP_EOL;
-                $matches[] = $comparison;
-                $iterator->deleteCurrent();
+            if ($contributor instanceof Contributor) {
+                $b = $contributor;
+            } else {
+                $b = clone $a;
+                $b->id = $contributor;
             }
-        }
 
-        if (0 === count($matches)) {
-            continue;
-        }
+            $comparison = Comparison::fromDyad($b, $a, $options);
 
-        $personId++;
+            $matches[] = $comparison;
+        } else {
+            foreach ($iterator as $b) {
+                $comparison = Comparison::fromDyad($a, $b, $options);
+
+                if ($comparison->percent >= $options->threshold) {
+                    $matches[] = $comparison;
+                    $iterator->deleteCurrent();
+                }
+            }
+
+            if (0 === count($matches)) {
+                continue;
+            }
+
+            $i++;
+            $personId = $i;
+
+            foreach ($matches as $match) {
+                $hash = $match->contributor->toHash();
+
+                if (isset($memo[$hash])) {
+                    continue;
+                }
+
+                if ($match->percent >= 1.0) { // exact match: store ID
+                    $memo[$hash] = [$a->id, $personId];
+                    continue;
+                }
+
+                echo '--------------------' . PHP_EOL;
+                echo '- Imperfect match: -' . PHP_EOL;
+                echo '--------------------' . PHP_EOL;
+                echo 'A     = ' . $a . PHP_EOL;
+                echo 'B     = ' . $match->contributor . PHP_EOL;
+                echo 'Match = ' . number_format(round($match->percent * 100, 2), 2) . '%' . PHP_EOL;
+
+                // partial match: store object
+                $memo[$hash] = [clone $a, $personId];
+            }
+
+            $matches = array_slice($matches, 0, 1);
+        }
 
         foreach ($matches as $match) {
             $info = preg_replace(

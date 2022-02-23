@@ -88,6 +88,6 @@ final class Comparison implements Stringable
      */
     public function __toString(): string
     {
-        return number_format(round($this->percent * 100, 2), 2) . '% MATCH: ' . $this->contributor;
+        return number_format(round($this->percent * 100, 2), 2) . '% match: ' . $this->contributor;
     }
 }

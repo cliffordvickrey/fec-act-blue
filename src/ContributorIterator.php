@@ -54,14 +54,24 @@ final class ContributorIterator implements Iterator
      */
     public function __construct(?string $filename = null, int $chunkSize = 2000000, ?string $targetDir = null)
     {
-        $this->filename = $filename ?? __DIR__ . '/../do/act-blue-contributors.csv';
+        $this->filename = $filename ?? __DIR__ . '/../do/act-blue-export.csv';
         $this->targetDir = $targetDir ?? __DIR__ . '/../data/match';
 
         $this->chunk = [];
 
         $generator = $this->getCsvGenerator();
 
+        $hashes = [];
+
         foreach ($generator as $contributor) {
+            $hash = $contributor->toHash();
+
+            if (isset($hashes[$hash])) {
+                continue;
+            }
+
+            $hashes[$hash] = true;
+
             if (count($this->chunk) > $chunkSize) {
                 $this->page++;
                 $this->saveChunk();

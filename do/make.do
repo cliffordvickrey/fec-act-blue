@@ -360,7 +360,7 @@ foreach i of local candidates {
             di "`iv' Q`iii' '`v'"
         
             // amount given by person for given quarter
-            gen _amt = contribution_receipt_amount
+            gen _amt = amount
             replace _amt = 0 if year != `ii' | ///
                 quarter != `iii' | ///
                 candidate_name != "`i'"

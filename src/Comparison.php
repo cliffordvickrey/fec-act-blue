@@ -80,6 +80,14 @@ final class Comparison implements Stringable
 
         $percent += (($occupationPercent / 100) * $matchingOptions->occupationFactor);
 
+        $employerPercent = 0.0;
+
+        if ('' !== $a->employer && '' !== $b->employer) {
+            similar_text($a->employer, $b->employer, $employerPercent);
+        }
+
+        $percent += (($employerPercent / 100) * $matchingOptions->employerFactor);
+
         return new self($b, $percent);
     }
 

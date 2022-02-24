@@ -30,7 +30,7 @@ $maxDate = '2019-12-31';
 $maxTries = 20;
 $minDate = '2019-01-01';
 $pageStream = null;
-$rate = 2.0;
+$rate = 4.0;
 $url = 'https://api.open.fec.gov/v1/schedules/schedule_a/';
 $valid = true;
 
@@ -97,6 +97,7 @@ try {
             if ($coolDown < $rate) {
                 echo sprintf('Cooling down for %g seconds', $coolDown) . PHP_EOL;
                 usleep((int)($coolDown * 1000000));
+                $startTime = microtime(true);
             }
 
             echo sprintf('Sending request (contribution_receipt_date = "%s") ... ', $minDate);

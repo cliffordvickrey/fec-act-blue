@@ -36,6 +36,7 @@ final class Contributor implements Stringable
     public string $zip = '';
     public string $zipPlusFour = '';
     public string $occupation = '';
+    public string $employer = '';
 
     /**
      * @param array<string, mixed> $row
@@ -48,7 +49,7 @@ final class Contributor implements Stringable
         /** @var string[] $data */
         $data = array_pad(
             array_map(fn($value) => is_scalar($value) ? strtoupper(trim((string)$value)) : '', $row),
-            7,
+            8,
             ''
         );
 
@@ -72,6 +73,7 @@ final class Contributor implements Stringable
         $self->zip = $zip;
         $self->zipPlusFour = $zipPlus4;
         $self->occupation = $data[6];
+        $self->employer = $data[7];
 
         return $self;
     }
@@ -93,6 +95,7 @@ final class Contributor implements Stringable
         $self->zip = $an_array['zip'];
         $self->zipPlusFour = $an_array['zipPlusFour'];
         $self->occupation = $an_array['occupation'];
+        $self->employer = $an_array['employer'];
 
         return $self;
     }
@@ -118,7 +121,8 @@ final class Contributor implements Stringable
         'state' => "string",
         'zip' => "string",
         'zipPlusFour' => "string",
-        'occupation' => "string"
+        'occupation' => "string",
+        'employer' => "string"
     ])]
     public function toArray(): array
     {
@@ -130,7 +134,8 @@ final class Contributor implements Stringable
             'state' => $this->state,
             'zip' => $this->zip,
             'zipPlusFour' => $this->zip,
-            'occupation' => $this->occupation
+            'occupation' => $this->occupation,
+            'employer' => $this->employer
         ];
     }
 
@@ -148,7 +153,8 @@ final class Contributor implements Stringable
             $this->city,
             $this->state,
             $this->zip . ('' === $this->zipPlusFour ? '' : "-$this->zipPlusFour"),
-            '' === $this->occupation ? '' : "($this->occupation)"
+            '' === $this->occupation ? '' : "($this->occupation"
+                . ('' === $this->employer ? '' : " AT $this->employer") . ')'
         ]));
 
         return implode(' ', $parts);

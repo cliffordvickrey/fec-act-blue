@@ -15,7 +15,7 @@ final class ComparisonOptions
      * Factor by which to multiply name similarity
      * @var float
      */
-    public float $nameFactor = 0.55;
+    public float $nameFactor = 0.50;
     /**
      * Factor by which to multiply locale similarity
      * @var float
@@ -26,6 +26,11 @@ final class ComparisonOptions
      * @var float
      */
     public float $occupationFactor = 0.05;
+    /**
+     * Factor by which to multiply occupation similarity
+     * @var float
+     */
+    public float $employerFactor = 0.05;
     /**
      * Minimum score to be considered a match
      * @var float

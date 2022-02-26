@@ -99,7 +99,7 @@ echo sprintf(
     $uniqueContributorCount,
     count($surnameHashes),
     count($contributorsByHash)
-) . PHP_EOL;
+);
 
 echo 'Let the matching begin!' . PHP_EOL;
 

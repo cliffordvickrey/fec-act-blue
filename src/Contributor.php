@@ -152,6 +152,14 @@ final class Contributor implements Stringable
     /**
      * @return string
      */
+    public function toGroup(): string
+    {
+        return "{$this->state}_$this->surname";
+    }
+
+    /**
+     * @return string
+     */
     public function __toString(): string
     {
         $parts = array_values(array_filter([

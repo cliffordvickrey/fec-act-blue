@@ -10,7 +10,7 @@ final class ComparisonOptions
      * Minimum % name surname similarity for contributors to be a match
      * @var float
      */
-    public float $minimumSurnameSimilarity = 80.0;
+    public float $minimumSurnameSimilarity = 70.0;
     /**
      * Minimum % name similarity for contributors to be a match
      * @var float

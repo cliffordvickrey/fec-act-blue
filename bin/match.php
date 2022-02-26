@@ -21,7 +21,9 @@ $generator = $reader->read();
 
 $contributorsByHash = []; // contributors grouped by surname hash
 $uniqueContributors = []; // truly unique contributors
-$surnameHashes = []; // surname to hash
+$stateLookup = [];
+$surnameLookup = [];
+$groupHashes = []; // group to hash
 
 // get identical contributors
 foreach ($generator as $contributor) {
@@ -32,72 +34,83 @@ foreach ($generator as $contributor) {
     }
 
     $uniqueContributors[$hash] = $contributor;
-    $surnameHashes[$contributor->surname] = '';
+
+    // group possible matches (state and surname)
+    $group = $contributor->toGroup();
+    $groupHashes[$group] = '';
+    $stateLookup[$group] = $contributor->state;
+    $surnameLookup[$group] = $contributor->surname;
 }
 
 $uniqueContributorCount = count($uniqueContributors);
 
-// list of unique surnames
-ksort($surnameHashes);
-$uniqueSurnames = array_keys($surnameHashes);
+// list of unique groups
+ksort($groupHashes);
+$uniqueGroups = array_keys($groupHashes);
 
-// group similar surnames by unique hash
+// group similar states/surnames by unique hash
 
-/** @var resource $resourceSurnames */
-$resourceSurnames = fopen(__DIR__ . '/../data/match/match-surnames.csv', 'w');
+/** @var resource $resourceGroups */
+$resourceGroups = fopen(__DIR__ . '/../data/match/groups.csv', 'w');
 
 try {
-    fputcsv($resourceSurnames, ['hash', 'surname']);
+    fputcsv($resourceGroups, ['hash', 'group']);
 
-    foreach ($uniqueSurnames as $surname) {
-        if ('' !== $surnameHashes[$surname]) {
+    foreach ($uniqueGroups as $group) {
+        if ('' !== $groupHashes[$group]) {
             continue;
         }
 
-        $surnameHash = md5($surname);
+        $groupHash = md5($group);
 
-        $surnameMatches = [];
+        $groupMatches = [];
 
-        foreach ($uniqueSurnames as $i => $surnameToMatch) {
-            similar_text($surname, $surnameToMatch, $percentMatch);
+        $state = $stateLookup[$group];
+        $surname = $surnameLookup[$group];
+
+        foreach ($uniqueGroups as $i => $groupToMatch) {
+            if ($state !== $stateLookup[$groupToMatch]) {
+                break;
+            }
+
+            similar_text($surname, $surnameLookup[$groupToMatch], $percentMatch);
             if ($percentMatch >= $options->minimumSurnameSimilarity) {
-                $surnameMatches[] = $surnameToMatch;
-                unset($uniqueSurnames[$i]);
+                $groupMatches[] = $groupToMatch;
+                unset($uniqueGroups[$i], $stateLookup[$groupToMatch], $surnameLookup[$groupToMatch]);
             }
         }
 
-        foreach ($surnameMatches as $surnameMatch) {
-            if (false === fputcsv($resourceSurnames, [$surnameHash, $surnameMatch])) {
+        foreach ($groupMatches as $groupMatch) {
+            if (false === fputcsv($resourceGroups, [$groupHash, $groupMatch])) {
                 throw new RuntimeException('Could not write to surname CSV');
             }
 
-            $surnameHashes[$surnameMatch] = $surnameHash;
+            $groupHashes[$groupMatch] = $groupHash;
         }
     }
 } finally {
-    fclose($resourceSurnames);
+    fclose($resourceGroups);
 }
 
-unset($uniqueSurnames);
-ksort($surnameHashes);
+unset($uniqueGroups, $stateLookup, $surnameLookup);
+ksort($groupHashes);
 
 // group contributors by surname hash
 foreach ($uniqueContributors as $hash => $contributor) {
-    $surnameHash = $surnameHashes[$contributor->surname];
+    $groupHash = $groupHashes[$contributor->toGroup()];
 
-    if (!isset($contributorsByHash[$surnameHash])) {
-        $contributorsByHash[$surnameHash] = [];
+    if (!isset($contributorsByHash[$groupHash])) {
+        $contributorsByHash[$groupHash] = [];
     }
 
-    $contributorsByHash[$surnameHash][] = $contributor;
+    $contributorsByHash[$groupHash][] = $contributor;
 
     unset($uniqueContributors[$hash]);
 }
 
 echo sprintf(
-    '%d unique contributors with %d unique surnames grouped into %d chunks' . PHP_EOL,
+    '%d unique contributors separated into %d groups' . PHP_EOL,
     $uniqueContributorCount,
-    count($surnameHashes),
     count($contributorsByHash)
 );
 
@@ -142,8 +155,9 @@ try {
 
             $matches[] = $comparison;
         } else {
-            $surnameHash = $surnameHashes[$a->surname];
-            $possibleMatches = $contributorsByHash[$surnameHash];
+            $group = $a->toGroup();
+            $groupHash = $groupHashes[$group];
+            $possibleMatches = $contributorsByHash[$groupHash];
 
             foreach ($possibleMatches as $ii => $b) {
                 similar_text($a->name, $b->name, $pct);
@@ -161,9 +175,9 @@ try {
             }
 
             if (0 === count($possibleMatches)) {
-                unset($surnameHashes[$a->surname], $contributorsByHash[$surnameHash]);
+                unset($groupHashes[$group], $contributorsByHash[$groupHash]);
             } else {
-                $contributorsByHash[$surnameHash] = $possibleMatches;
+                $contributorsByHash[$groupHash] = $possibleMatches;
             }
 
             if (0 === count($matches)) {

@@ -7,6 +7,7 @@ use CliffordVickrey\FecActBlue\Comparison;
 use CliffordVickrey\FecActBlue\ComparisonOptions;
 use CliffordVickrey\FecActBlue\Contributor;
 use CliffordVickrey\FecActBlue\CsvReader;
+use CliffordVickrey\FecActBlue\CsvWriter;
 
 ini_set('max_execution_time', '0');
 ini_set('memory_limit', '-1');
@@ -44,52 +45,62 @@ foreach ($generator as $contributor) {
 
 $uniqueContributorCount = count($uniqueContributors);
 
-// list of unique groups
-ksort($groupHashes);
-$uniqueGroups = array_keys($groupHashes);
-
 // group similar states/surnames by unique hash
 
-/** @var resource $resourceGroups */
-$resourceGroups = fopen(__DIR__ . '/../data/match/groups.csv', 'w');
+$groupFilename = __DIR__ . '/../data/match/groups.csv';
 
-try {
-    fputcsv($resourceGroups, ['hash', 'group']);
+if (is_file($groupFilename)) {
+    $groupReader = new CsvReader($groupFilename);
 
-    foreach ($uniqueGroups as $group) {
-        if ('' !== $groupHashes[$group]) {
-            continue;
-        }
+    $groupGenerator = $groupReader->readGroupData();
 
-        $groupHash = md5($group);
+    $groupHashes = [];
 
-        $groupMatches = [];
-
-        $state = $stateLookup[$group];
-        $surname = $surnameLookup[$group];
-
-        foreach ($uniqueGroups as $i => $groupToMatch) {
-            if ($state !== $stateLookup[$groupToMatch]) {
-                break;
-            }
-
-            similar_text($surname, $surnameLookup[$groupToMatch], $percentMatch);
-            if ($percentMatch >= $options->minimumSurnameSimilarity) {
-                $groupMatches[] = $groupToMatch;
-                unset($uniqueGroups[$i], $stateLookup[$groupToMatch], $surnameLookup[$groupToMatch]);
-            }
-        }
-
-        foreach ($groupMatches as $groupMatch) {
-            if (false === fputcsv($resourceGroups, [$groupHash, $groupMatch])) {
-                throw new RuntimeException('Could not write to surname CSV');
-            }
-
-            $groupHashes[$groupMatch] = $groupHash;
-        }
+    foreach ($groupGenerator as $groupData) {
+        list ($groupHash, $groupMatch) = $groupData;
+        $groupHashes[$groupMatch] = $groupHash;
     }
-} finally {
-    fclose($resourceGroups);
+} else {
+    // list of unique groups
+    ksort($groupHashes);
+    $uniqueGroups = array_keys($groupHashes);
+
+    $groupWriter = new CsvWriter($groupFilename);
+
+    try {
+        $groupWriter->write(['hash', 'group']);
+
+        foreach ($uniqueGroups as $group) {
+            if ('' !== $groupHashes[$group]) {
+                continue;
+            }
+
+            $groupHash = md5($group);
+
+            $groupMatches = [];
+            $state = $stateLookup[$group];
+            $surname = $surnameLookup[$group];
+
+            foreach ($uniqueGroups as $i => $groupToMatch) {
+                if ($state !== $stateLookup[$groupToMatch]) {
+                    break;
+                }
+
+                similar_text($surname, $surnameLookup[$groupToMatch], $percentMatch);
+                if ($percentMatch >= $options->minimumSurnameSimilarity) {
+                    $groupMatches[] = $groupToMatch;
+                    unset($uniqueGroups[$i], $stateLookup[$groupToMatch], $surnameLookup[$groupToMatch]);
+                }
+            }
+
+            foreach ($groupMatches as $groupMatch) {
+                $groupWriter->write([$groupHash, $groupMatch]);
+                $groupHashes[$groupMatch] = $groupHash;
+            }
+        }
+    } finally {
+        $groupWriter->close();
+    }
 }
 
 unset($uniqueGroups, $stateLookup, $surnameLookup);
@@ -122,16 +133,14 @@ $i = 0;
 /** @var array<string, array{0: Contributor|string, 1: int}> $memo */
 $memo = [];
 
-/** @var resource $resource */
-$resource = fopen(__DIR__ . '/../data/match/donor-ids.csv', 'w');
-/** @var resource $resourcePartial */
-$resourcePartial = fopen(__DIR__ . '/../data/match/partial-matches.csv', 'w');
+$donorIdsWriter = new CsvWriter(__DIR__ . '/../data/match/donor-ids.csv');
+$partialMatchesWriter = new CsvWriter(__DIR__ . '/../data/match/partial-matches.csv');
 
 $startTime = microtime(true);
 
 try {
-    fputcsv($resource, ['id', 'donor_id', 'similarity', 'info']);
-    fputcsv($resourcePartial, ['similarity', 'info_a', 'info_b', 'hash_a', 'hash_b']);
+    $donorIdsWriter->write(['id', 'donor_id', 'similarity', 'info']);
+    $partialMatchesWriter->write(['info_a', 'info_b', 'similarity', 'hash_a', 'hash_b']);
 
     $generator = $reader->read();
 
@@ -210,10 +219,7 @@ try {
                 $infoB = preg_replace('/^#' . preg_quote($b->id, '/') . '\s-\s/', '', (string)$b);
 
                 $partialRow = [$infoA, $infoB, $match->percent, $hash, $matchHash];
-
-                if (false === fputcsv($resourcePartial, $partialRow)) {
-                    throw new RuntimeException('Could not write to partial match CSV');
-                }
+                $partialMatchesWriter->write($partialRow);
 
                 // partial match: store object
                 $memo[$matchHash] = [clone $a, $personId];
@@ -227,12 +233,10 @@ try {
 
             $info = preg_replace('/^#' . preg_quote($b->id, '/') . '\s-\s/', '', (string)$b);
 
-            if (false === fputcsv($resource, [$match->contributor->id, $personId, $match->percent, $info])) {
-                throw new RuntimeException('Could not write to output CSV');
-            }
+            $donorIdsWriter->write([$match->contributor->id, $personId, $match->percent, $info]);
         }
     }
 } finally {
-    fclose($resource);
-    fclose($resourcePartial);
+    $donorIdsWriter->close();
+    $partialMatchesWriter->close();
 }

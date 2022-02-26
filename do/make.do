@@ -392,21 +392,20 @@ keep id candidate_id receipt_date amount
 preserve
 
 // file 02: partial match list
-import delimited "`c(pwd)'\..\match\partial-matches.csv", clear
-label var similiarity "Similarity Score"
+import delimited "`c(pwd)'\..\data\match\partial-matches.csv", clear
+label var similarity "Similarity Score"
 label var info_a "Donor info (A)"
 label var info_b "Donor info (B)"
 label var hash_a "Unique donor hash (A)"
 label var hash_b "Unique donor hash (B)"
 compress
+sort similarity
 save `c(pwd)'\act-blue-presidential_02.dta, replace
 
 // file 03: donor IDs
-import delimited "`c(pwd)'\..\match\donor-ids.csv", clear
-drop similarity
+import delimited "`c(pwd)'\..\data\match\donor-ids.csv", colrange(1:2) clear
 label var id "ID"
 label var donor_id "Unique donor ID"
-label var info "Donor info" 
 compress
 save `c(pwd)'\act-blue-presidential_03.dta, replace
 restore
@@ -417,14 +416,13 @@ drop if _merge == 2
 drop _merge
 label var donor_id "Unique donor ID"
 order donor_id, after(id)
-drop name address city state zip occupation employer
 save `c(pwd)'\act-blue-presidential_04.dta, replace
 
 // stub for candidate reports
 preserve
 clear
 gen str10 candidate_name = ""
-gen int year year = 0
+gen int year = 0
 gen int quarter = 0
 gen int contributions = 0
 gen int unique_donors = 0
@@ -478,7 +476,7 @@ replace candidate_name = "horowitz" if candidate_id == 31
 replace candidate_name = "howard" if candidate_id == 32
 replace candidate_name = "howe" if candidate_id == 33
 replace candidate_name = "inslee" if candidate_id == 34
-replace candidate_name = "klobuchar" if candidate_id = 35
+replace candidate_name = "klobuchar" if candidate_id == 35
 replace candidate_name = "leffert" if candidate_id == 36
 replace candidate_name = "mcinnis" if candidate_id == 37
 replace candidate_name = "messam" if candidate_id == 38
@@ -507,10 +505,12 @@ replace candidate_name = "wiand" if candidate_id == 60
 replace candidate_name = "williamson" if candidate_id == 61
 replace candidate_name = "wilson" if candidate_id == 62
 replace candidate_name = "yang" if candidate_id == 63
+drop candidate_id
 
 // date extras
 gen int year = year(receipt_date)
 gen int month = month(receipt_date)
+recode month (1/3=1) (4/6=2) (7/9=3) (10/12=4), gen(quarter)
 
 // loop through candidates and create sum variables
 bysort donor_id : gen byte _unique = _n == 1
@@ -605,27 +605,27 @@ foreach i of local candidates {
             
             preserve
             use `c(pwd)'\act-blue-presidential_06.dta, clear
-            expand 2 if year == 0, gen(_c)
-            replace candidate_name = "`i" if _c == 1
-            replace year = "`ii" if _c == 1
-            replace quarter = "`iii" if _c == 1
-            replace contributions = `cand_ct' if _c == 1
-            replace donors = `cand_unique_ct_' if _c == 1
-            replace amount = `cand_amount' if _c == 1
+            qui expand 2 if year == 0, gen(_c)
+            qui replace candidate_name = "`i" if _c == 1
+            qui replace year = `ii' if _c == 1
+            qui replace quarter = `iii' if _c == 1
+            qui replace contributions = `cand_ct' if _c == 1
+            qui replace unique_donors = `cand_unique_ct_' if _c == 1
+            qui replace amount = `cand_amount' if _c == 1
             drop _c
-            save `c(pwd)'\act-blue-presidential_06.dta, replace            
+            qui save `c(pwd)'\act-blue-presidential_06.dta, replace            
             restore
         }
     }
 }
 keep if _unique == 1
-drop _unique candidate_month year month quarter
+keep donor_*
 
 // order our variables
-order donor_amt_* donor_ct_*, last
+order donor_id donor_amt_* donor_ct_*,
 
 // file 05: donor-level totals
-sort id
+sort donor_id
 compress
 save `c(pwd)'\act-blue-presidential_05.dta, replace
 

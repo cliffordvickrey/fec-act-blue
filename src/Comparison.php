@@ -51,20 +51,22 @@ final class Comparison implements Stringable
 
         $localePercent = 0.0;
 
-        if ($a->state === $b->state && $a->city === $b->city) {
-            $localePercent += 0.35;
-        }
-
         if (
             $a->zip === $b->zip
             && !('' !== $a->zipPlusFour && '' !== $b->zipPlusFour && $a->zipPlusFour !== $b->zipPlusFour)
         ) {
-            $localePercent += 0.45;
+            $localePercent += 0.40;
+        } elseif ($a->zip === $b->zip) {
+            $localePercent += 0.20;
         }
+
+        similar_text($a->city, $b->city, $cityPercent);
+
+        $localePercent += (($cityPercent / 100) * .35);
 
         similar_text($a->address, $b->address, $addressPercent);
 
-        $localePercent += (($addressPercent / 100) * 0.20);
+        $localePercent += (($addressPercent / 100) * 0.25);
 
         $percent += ($localePercent * $matchingOptions->localeFactor);
 

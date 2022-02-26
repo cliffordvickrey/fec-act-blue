@@ -14,6 +14,7 @@ use function array_filter;
 use function array_map;
 use function array_pad;
 use function array_values;
+use function explode;
 use function implode;
 use function is_numeric;
 use function is_scalar;
@@ -33,6 +34,7 @@ final class Contributor implements Stringable
     public string $address = '';
     public string $city = '';
     public string $state = '';
+    public string $surname = '';
     public string $zip = '';
     public string $zipPlusFour = '';
     public string $occupation = '';
@@ -53,8 +55,13 @@ final class Contributor implements Stringable
             ''
         );
 
+        $name = $data[1];
+        $parts = explode(',', $name, 2);
+        $surname = trim($parts[0]);
+
         $self->id = $data[0];
         $self->name = $data[1];
+        $self->surname = $surname;
         $self->address = $data[2];
         $self->city = $data[3];
         $self->state = $data[4];
@@ -89,6 +96,7 @@ final class Contributor implements Stringable
 
         $self->id = $an_array['id'];
         $self->name = $an_array['name'];
+        $self->surname = $an_array['surname'];
         $self->address = $an_array['address'];
         $self->city = $an_array['city'];
         $self->state = $an_array['state'];
@@ -106,7 +114,7 @@ final class Contributor implements Stringable
     public function toHash(): string
     {
         $data = $this->toArray();
-        unset($data['id']);
+        unset($data['id'], $data['surname']);
         return md5(serialize($data));
     }
 
@@ -116,6 +124,7 @@ final class Contributor implements Stringable
     #[ArrayShape([
         'id' => "string",
         'name' => "string",
+        'surname' => "string",
         'address' => "string",
         'city' => "string",
         'state' => "string",
@@ -129,6 +138,7 @@ final class Contributor implements Stringable
         return [
             'id' => $this->id,
             'name' => $this->name,
+            'surname' => $this->name,
             'address' => $this->address,
             'city' => $this->city,
             'state' => $this->state,

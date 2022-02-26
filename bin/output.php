@@ -152,7 +152,7 @@ foreach ($files as $file) {
                         continue;
                     }
 
-                    throw new UnexpectedValueException("Unexpected column, '$key'. Try re-generating column data");
+                    echo "Warning: unexpected column, '$key'. Try re-generating column data" . PHP_EOL;
                 }
 
                 if (false === fputcsv($outputResource, array_values($reshaped))) {

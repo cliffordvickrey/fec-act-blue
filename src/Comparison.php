@@ -49,10 +49,6 @@ final class Comparison implements Stringable
 
         $percent = ($namePct / 100) * $matchingOptions->nameFactor;
 
-        if ($namePct < $matchingOptions->minimumNameSimilarity) {
-            return new self($b, $percent);
-        }
-
         $localePercent = 0.0;
 
         if ($a->state === $b->state && $a->city === $b->city) {

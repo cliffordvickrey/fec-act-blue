@@ -66,7 +66,7 @@ $baseQuery = [
     'api_key' => $credentials['apiKey'],
     'committee_id' => $committeeId,
     'is_individual' => true,
-    'max_date' => $maxDate,
+    'max_date' => $minDate,
     'min_date' => $minDate,
     'per_page' => 100,
     'sort' => 'contribution_receipt_date'
@@ -79,6 +79,8 @@ try {
         // region send request
 
         $query = $baseQuery;
+        $query['min_date'] = $minDate;
+        $query['max_date'] = $minDate;
 
         if (is_array($lastIndexes)) {
             $query = array_merge($query, $lastIndexes);
@@ -92,9 +94,10 @@ try {
             $oldStartTime = $startTime ?? 0.0;
             $startTime = microtime(true);
 
-            $coolDown = $startTime - $oldStartTime;
+            $elapsed = $startTime - $oldStartTime;
 
-            if ($coolDown < $rate) {
+            if ($elapsed < $rate) {
+                $coolDown = $rate - $elapsed;
                 echo sprintf('Cooling down for %g seconds', $coolDown) . PHP_EOL;
                 usleep((int)($coolDown * 1000000));
                 $startTime = microtime(true);
@@ -140,8 +143,7 @@ try {
                 echo "The rate limit has been exceeded. Let's wait an hour ..." . PHP_EOL;
                 sleep(3600); // wait an hour before trying again
             } else {
-                echo 'Request failed! Retrying in 500 milliseconds ...' . PHP_EOL;
-                usleep(500000); // wait half a second before trying again
+                echo "Request failed! Let's try again ..." . PHP_EOL;
             }
         }
 
@@ -178,11 +180,6 @@ try {
         $pagination = $data['pagination'] ?? null;
         $lastIndexes = is_array($pagination) ? ($pagination['last_indexes'] ?? null) : null;
 
-        // we're at the end of the line!
-        if (empty($lastIndexes) || !is_array($lastIndexes)) {
-            $valid = false;
-        }
-
         // endregion
 
         // region write data
@@ -206,6 +203,22 @@ try {
                 $pageStream->close();
                 $pageStream = null;
             }
+        }
+
+        // endregion
+
+        // region check if we're (finally!) done
+
+        $endOfResults = (empty($lastIndexes) || !is_array($lastIndexes));
+        if ($minDate === $maxDate && $endOfResults) {
+            $valid = false;
+        } elseif ($endOfResults) {
+            /** @var DateTimeImmutable $dateTime */
+            $dateTime = DateTimeImmutable::createFromFormat('Y-m-d', $minDate);
+            $dateTime = $dateTime->add(new DateInterval('P1D'));
+            $minDate = $dateTime->format('Y-m-d');
+            $pageStream?->close();
+            $pageStream = null;
         }
 
         // endregion

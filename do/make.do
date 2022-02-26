@@ -604,7 +604,7 @@ foreach i of local candidates {
             drop cand_*
             
             preserve
-            use `c(pwd)'\act-blue-presidential_06.dta, replace
+            use `c(pwd)'\act-blue-presidential_06.dta, clear
             expand 2 if year == 0, gen(_c)
             replace candidate_name = "`i" if _c == 1
             replace year = "`ii" if _c == 1

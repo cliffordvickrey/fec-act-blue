@@ -569,7 +569,7 @@ foreach i of local candidates {
             qui gen byte _valid = _unique
             qui replace _valid = 0 if donor_ct_`i'_`v'_q`iii' <= 0
             qui egen cand_unique_ct_`i'_`v'_q`iii' = total(_valid)
-			
+            
             // clean up
             qui drop _amt _valid
             
@@ -617,8 +617,8 @@ foreach i of local candidates {
             restore
         }
     }
-	
-	qui drop if _unique == 0 & candidate_name == "`i'"
+
+    qui drop if _unique == 0 & candidate_name == "`i'"
 }
 keep if _unique == 1
 keep donor_*

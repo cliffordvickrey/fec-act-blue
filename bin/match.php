@@ -22,8 +22,8 @@ $generator = $reader->read();
 
 $contributorsByHash = []; // contributors grouped by surname hash
 $uniqueContributors = []; // truly unique contributors
-$stateLookup = [];
-$surnameLookup = [];
+$stateLookup = []; // memo for storing states by group
+$surnameLookup = []; // memo for storing surnames by group
 $groupHashes = []; // group to hash
 
 // get identical contributors
@@ -50,6 +50,7 @@ $uniqueContributorCount = count($uniqueContributors);
 $groupFilename = __DIR__ . '/../data/match/groups.csv';
 
 if (is_file($groupFilename)) {
+    // load extant groups
     $groupReader = new CsvReader($groupFilename);
 
     $groupGenerator = $groupReader->readGroupData();

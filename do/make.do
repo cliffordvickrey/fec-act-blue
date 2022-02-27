@@ -156,7 +156,7 @@ foreach x of local files {
     replace candidate_id = "P00008763" if candidate_id == "" ///
         & strpos(memo_text, "C00691444") // OJEDA, RICHARD NEECE II
     replace candidate_id = "P00010793" if candidate_id == "" ///
-        & strpos(memo_text, "C00501197") // O'ROURKE, ROBERT BETO
+        & strpos(memo_text, "C00699090") // O'ROURKE, ROBERT BETO
     replace candidate_id = "P00014407" if candidate_id == "" ///
         & strpos(memo_text, "C00727156") // PATRICK, DEVAL
     replace candidate_id = "P00010587" if candidate_id == "" ///
@@ -410,7 +410,7 @@ compress
 save `c(pwd)'\act-blue-presidential_03.dta, replace
 restore
 
-// file 04: receipts with person IDs
+// file 04: receipts with donor IDs
 merge m:1 id using `c(pwd)'\act-blue-presidential_03.dta, keepusing(donor_id)
 drop if _merge == 2
 drop _merge
@@ -551,7 +551,7 @@ foreach i of local candidates {
         foreach iii of local quarters {
             // amount given by person for given quarter
             qui gen _amt = amount
-            qui replace _amt = 0 if year != `ii'| quarter != `iii' ///
+            qui replace _amt = 0 if year != `ii' | quarter != `iii' ///
                 | candidate_name != "`i'"
             qui egen donor_amt_`i'_`v'_q`iii' = total(_amt), by(donor_id)
             
@@ -569,7 +569,7 @@ foreach i of local candidates {
             qui gen byte _valid = _unique
             qui replace _valid = 0 if donor_ct_`i'_`v'_q`iii' <= 0
             qui egen cand_unique_ct_`i'_`v'_q`iii' = total(_valid)
-            
+			
             // clean up
             qui drop _amt _valid
             
@@ -598,7 +598,7 @@ foreach i of local candidates {
             qui sum cand_amt_`i'_`v'_q`iii'
             local cand_amount = r(max)
             di "ActBlue earmarked receipts:  `cand_ct'"
-            di "ActBlue unique contributors: `cand_unique_ct_'"
+            di "ActBlue unique contributors: `cand_unique_ct'"
             di "ActBlue received:            $`cand_amount'"
             
             drop cand_*
@@ -606,23 +606,25 @@ foreach i of local candidates {
             preserve
             use `c(pwd)'\act-blue-presidential_06.dta, clear
             qui expand 2 if year == 0, gen(_c)
-            qui replace candidate_name = "`i" if _c == 1
+            qui replace candidate_name = "`i'" if _c == 1
             qui replace year = `ii' if _c == 1
             qui replace quarter = `iii' if _c == 1
             qui replace contributions = `cand_ct' if _c == 1
-            qui replace unique_donors = `cand_unique_ct_' if _c == 1
+            qui replace unique_donors = `cand_unique_ct' if _c == 1
             qui replace amount = `cand_amount' if _c == 1
             drop _c
             qui save `c(pwd)'\act-blue-presidential_06.dta, replace            
             restore
         }
     }
+	
+	qui drop if _unique == 0 & candidate_name == "`i'"
 }
 keep if _unique == 1
 keep donor_*
 
 // order our variables
-order donor_id donor_amt_* donor_ct_*,
+order donor_id donor_amt_* donor_ct_*
 
 // file 05: donor-level totals
 sort donor_id
@@ -632,5 +634,6 @@ save `c(pwd)'\act-blue-presidential_05.dta, replace
 // file 06: candidate-level totals
 use `c(pwd)'\act-blue-presidential_06.dta, replace
 drop if year == 0
+sort candidate_name year quarter
 compress
 save `c(pwd)'\act-blue-presidential_06.dta, replace

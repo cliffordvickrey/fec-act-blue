@@ -268,6 +268,7 @@ foreach x of local files {
     replace _candidate_id = 63 if candidate_id == "P00006486"
 
     gen id = _n + `k'
+    format id %10.0g
     qui sum id if missing(_candidate_id)
     
     if (r(N) > 0) {
@@ -389,6 +390,7 @@ foreach x of local files {
 
 // file 01: receipts
 sort id
+format id %10.0g
 save `c(pwd)'\act-blue-presidential_01.dta, replace
 
 // export names
@@ -418,6 +420,8 @@ drop if missing(donor_id)
 label var id "ID"
 label var donor_id "Unique donor ID"
 compress
+format id %10.0g
+format donor_id %10.0g
 save `c(pwd)'\act-blue-presidential_03.dta, replace
 restore
 

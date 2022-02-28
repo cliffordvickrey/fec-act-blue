@@ -20,6 +20,7 @@ foreach x of local files {
         capture confirm file `stata_binary'
         
         if (_rc == 601) {
+            clear
             local filename = "`filepath'" + "\" + "`x'"
             di "Importing `filename'..."
             import delimited "`filename'", stringcols(192 217) clear
@@ -367,6 +368,15 @@ foreach x of local files {
         zip ///
         occupation ///
         employer
+        
+    // remove backslashes from data (causes problems for CSV export)
+    replace name = subinstr(name, "\", "", .) 
+    replace address = subinstr(address, "\", "", .) 
+    replace city = subinstr(city, "\", "", .) 
+    replace state = subinstr(state, "\", "", .)     
+    replace zip = subinstr(zip, "\", "", .)         
+    replace occupation = subinstr(occupation, "\", "", .) 
+    replace employer = subinstr(employer, "\", "", .) 
 
     // save
     compress
@@ -387,7 +397,6 @@ keep id name address city state zip occupation employer
 order id name address city state zip occupation employer
 export delimited using "`c(pwd)'\..\data\match\raw.csv", novarnames replace
 restore
-
 keep id candidate_id receipt_date amount
 preserve
 
@@ -404,6 +413,8 @@ save `c(pwd)'\act-blue-presidential_02.dta, replace
 
 // file 03: donor IDs
 import delimited "`c(pwd)'\..\data\match\donor-ids.csv", colrange(1:2) clear
+destring donor_id, force replace
+drop if missing(donor_id)
 label var id "ID"
 label var donor_id "Unique donor ID"
 compress
@@ -412,7 +423,7 @@ restore
 
 // file 04: receipts with donor IDs
 merge m:1 id using `c(pwd)'\act-blue-presidential_03.dta, keepusing(donor_id)
-drop if _merge == 2
+drop if _merge != 3
 drop _merge
 label var donor_id "Unique donor ID"
 order donor_id, after(id)
@@ -422,20 +433,26 @@ save `c(pwd)'\act-blue-presidential_04.dta, replace
 preserve
 clear
 gen str10 candidate_name = ""
-gen int year = 0
-gen int quarter = 0
+gen int candidate_id = 0
+gen str7 period = ""
 gen int contributions = 0
 gen int unique_donors = 0
+gen int new_unique_donors = 0
+gen int unique_over200_donors = 0
+gen int new_unique_over200_donors = 0
 gen float amount = 0
 input
-"" 0 0 0 0 0
+"" 0 "" 0 0 0 0 0 0
 end
 
 label var candidate_name "Candidate name"
-label var year "Year"
-label var quarter "Quarter"
+label var candidate_id "Candidate ID"
+label var period "Period"
 label var contributions "Contributions via ActBlue"
 label var unique_donors "Unique ActBlue donors"
+label var new_unique_donors "New Unique ActBlue donors"
+label var unique_over200_donors "Unique ActBlue $200+ donors"
+label var new_unique_over200_donors "New Unique ActBlue $200+ donors"
 label var amount "Amount raised via ActBlue"
 save `c(pwd)'\act-blue-presidential_06.dta, replace
 restore
@@ -505,20 +522,31 @@ replace candidate_name = "wiand" if candidate_id == 60
 replace candidate_name = "williamson" if candidate_id == 61
 replace candidate_name = "wilson" if candidate_id == 62
 replace candidate_name = "yang" if candidate_id == 63
-drop candidate_id
 
 // date extras
 gen int year = year(receipt_date)
 gen int month = month(receipt_date)
 recode month (1/3=1) (4/6=2) (7/9=3) (10/12=4), gen(quarter)
+gen byte debate = 0
+replace debate = 1 if receipt_date < td(13jun2019)
+replace debate = 2 if debate == 0 & receipt_date < td(17jul2019)
+replace debate = . if debate == 0
+replace quarter = . if quarter > 2 // @todo remove
+drop receipt_date month
 
 // loop through candidates and create sum variables
 bysort donor_id : gen byte _unique = _n == 1
 levelsof candidate_name, local(candidates)
 levelsof year, local(years)
 levelsof quarter, local(quarters)
+levelsof debate, local(debates)
+
+compress
 
 foreach i of local candidates {
+    qui sum candidate_id if candidate_name == "`i'"
+    local cand_id = r(max)
+    
     local iv = proper("`i'")
     
     if ("de_blasio" == "`i'") {
@@ -547,29 +575,54 @@ foreach i of local candidates {
         
     foreach ii of local years {
         local v = substr("`ii'", 3, 2)
+        
+        qui gen _ytd = 0
+    
+        qui gen _amt = amount
+        qui replace _amt = 0 if year != `ii' | candidate_id != `cand_id'
+        qui egen _total = total(_amt), by(donor_id)
+        gen byte _over200 = 0
+        qui replace _over200 = 1 if _total > 200
+        drop _total _amt
     
         foreach iii of local quarters {
             // amount given by person for given quarter
             qui gen _amt = amount
             qui replace _amt = 0 if year != `ii' | quarter != `iii' ///
-                | candidate_name != "`i'"
+                | candidate_id != `cand_id'
             qui egen donor_amt_`i'_`v'_q`iii' = total(_amt), by(donor_id)
+            qui compress donor_amt_`i'_`v'_q`iii'
             
             // amount a candidate raised for a given quarter
-            qui egen cand_amt_`i'_`v'_q`iii' = total(_amt)
+            qui egen cand_amt = total(_amt)
             
             // times a person gave for a given quarter
             qui replace _amt = . if _amt <= 0            
             qui egen donor_ct_`i'_`v'_q`iii' = count(_amt), by(donor_id)
+            qui compress donor_ct_`i'_`v'_q`iii'
             
             // candidate contributions for a given quarter
-            qui egen cand_ct_`i'_`v'_q`iii' = count(_amt)            
+            qui egen cand_ct = count(_amt)            
             
             // unique candidate donors for a given quarter
             qui gen byte _valid = _unique
             qui replace _valid = 0 if donor_ct_`i'_`v'_q`iii' <= 0
-            qui egen cand_unique_ct_`i'_`v'_q`iii' = total(_valid)
+            qui egen cand_unique_ct = total(_valid)
+            qui replace _valid = 0 if _ytd > 0
+            qui egen cand_new_unique_ct = total(_valid)
             
+            // unique candidate donors for a given quarter ($200+)
+            drop _valid
+            qui gen byte _valid = _unique
+            qui replace _valid = 0 if donor_ct_`i'_`v'_q`iii' <= 0 ///
+                | _over200 == 0
+            qui egen cand_unique_over200_ct = total(_valid)
+            qui replace _valid = 0 if _ytd > 0
+            qui egen cand_new_unique_over200_ct = total(_valid)
+            
+            // add to donor's YTD total for this candidate
+            qui replace _ytd = _ytd + donor_amt_`i'_`v'_q`iii'
+
             // clean up
             qui drop _amt _valid
             
@@ -578,47 +631,133 @@ foreach i of local candidates {
                 "Amount this donor gave to `iv' via ActBlue in Q`iii' `ii'"
             label var donor_ct_`i'_`v'_q`iii' /// 
                 "# of times this donor gave to `iv' via ActBlue in Q`iii' `ii'"
-            label var cand_ct_`i'_`v'_q`iii' ///
-                "# contributions `iv' received via ActBlue in Q`iii' `ii'"
-            label var cand_unique_ct_`i'_`v'_q`iii' ///
-                "# unique `iv' ActBlue contributors in Q`iii' `ii'"
-            label var cand_amt_`i'_`v'_q`iii' ///
-                "Amount `iv' raised via ActBlue in Q`iii' `ii'"
-                
+            
             // report
             
             di ""
             di "------------------"
-            di "`iv' `ii' Q`iii'"
+            di "`iv' (ID = `cand_id') `ii' Q`iii'"
             di "------------------"
-            qui sum cand_ct_`i'_`v'_q`iii'
+            qui sum cand_ct
             local cand_ct = r(max)
-            qui sum cand_unique_ct_`i'_`v'_q`iii'
+            qui sum cand_unique_ct
             local cand_unique_ct = r(max)
-            qui sum cand_amt_`i'_`v'_q`iii'
+            qui sum cand_new_unique_ct
+            local cand_new_unique_ct = r(max)            
+            qui sum cand_unique_over200_ct
+            local cand_unique_over200_ct = r(max)
+            qui sum cand_new_unique_over200_ct
+            local cand_new_unique_over200_ct = r(max)
+            qui sum cand_amt
             local cand_amount = r(max)
-            di "ActBlue earmarked receipts:  `cand_ct'"
-            di "ActBlue unique contributors: `cand_unique_ct'"
-            di "ActBlue received:            $`cand_amount'"
-            
+
+            di "ActBlue earmarked receipts:       `cand_ct'"
+            di "ActBlue unique donors:            `cand_unique_ct'"
+            di "ActBlue new unique donors:        `cand_new_unique_ct'"
+            di "ActBlue unique $200+ donors:      `cand_unique_over200_ct'"
+            di "ActBlue new unique $200+ donors:  `cand_new_unique_over200_ct'"            
+            di "ActBlue received:                $`cand_amount'"
             drop cand_*
-            
+
             preserve
             use `c(pwd)'\act-blue-presidential_06.dta, clear
-            qui expand 2 if year == 0, gen(_c)
+            qui expand 2 if period == "", gen(_c)
             qui replace candidate_name = "`i'" if _c == 1
-            qui replace year = `ii' if _c == 1
-            qui replace quarter = `iii' if _c == 1
+            qui replace candidate_id = `cand_id' if _c == 1
+            qui replace period = "`ii'_Q`iii'" if _c == 1
             qui replace contributions = `cand_ct' if _c == 1
             qui replace unique_donors = `cand_unique_ct' if _c == 1
+            qui replace new_unique_donors = `cand_new_unique_ct' if _c == 1            
+            qui replace unique_over200_donors = `cand_unique_over200_ct' ///
+                if _c == 1
+            qui replace new_unique_over200_donors = `cand_unique_over200_ct' ///
+                if _c == 1
             qui replace amount = `cand_amount' if _c == 1
             drop _c
             qui save `c(pwd)'\act-blue-presidential_06.dta, replace            
             restore
         }
+                
+        foreach iii of local debates {
+            // amount given by person for given debate
+            qui gen _amt = amount
+            qui replace _amt = 0 if year != `ii' | missing(debate) ///
+                | debate > `iii' | candidate_id != `cand_id'
+            qui egen cand_amt = total(_amt)
+            
+            // times a person gave for a given debate
+            qui replace _amt = . if _amt <= 0            
+            qui egen donor_ct = count(_amt), by(donor_id)
+            
+            // candidate contributions for a given debate
+            qui egen cand_ct = count(_amt)            
+            
+            // unique candidate donors for a given debate
+            qui gen byte _valid = _unique
+            qui replace _valid = 0 if donor_ct <= 0
+            qui egen cand_unique_ct = total(_valid)
+            qui gen cand_new_unique_ct = cand_unique_ct
+            
+            // unique candidate donors for a given debate ($200+)
+            drop _valid
+            qui gen byte _valid = _unique
+            qui replace _valid = 0 if donor_ct <= 0 ///
+                | _over200 == 0
+            qui egen cand_unique_over200_ct = total(_valid)
+            qui gen cand_new_unique_over200_ct = cand_unique_over200_ct
+            
+            // clean up
+            qui drop _amt _valid donor_ct
+            
+            // report
+            
+            di ""
+            di "------------------"
+            di "`iv' (ID = `cand_id') `ii' Debate #`iii'"
+            di "------------------"
+            qui sum cand_ct
+            local cand_ct = r(max)
+            qui sum cand_unique_ct
+            local cand_unique_ct = r(max)
+            qui sum cand_new_unique_ct
+            local cand_new_unique_ct = r(max)            
+            qui sum cand_unique_over200_ct
+            local cand_unique_over200_ct = r(max)
+            qui sum cand_new_unique_over200_ct
+            local cand_new_unique_over200_ct = r(max)
+            qui sum cand_amt
+            local cand_amount = r(max)
+
+            di "ActBlue earmarked receipts:       `cand_ct'"
+            di "ActBlue unique donors:            `cand_unique_ct'"
+            di "ActBlue new unique donors:        `cand_new_unique_ct'"
+            di "ActBlue unique $200+ donors:      `cand_unique_over200_ct'"
+            di "ActBlue new unique $200+ donors:  `cand_new_unique_over200_ct'"            
+            di "ActBlue received:                $`cand_amount'"
+            drop cand_*
+
+            preserve
+            use `c(pwd)'\act-blue-presidential_06.dta, clear
+            qui expand 2 if period == "", gen(_c)
+            qui replace candidate_name = "`i'" if _c == 1
+            qui replace candidate_id = `cand_id' if _c == 1            
+            qui replace period = "`ii'_D`iii'" if _c == 1
+            qui replace contributions = `cand_ct' if _c == 1
+            qui replace unique_donors = `cand_unique_ct' if _c == 1
+            qui replace new_unique_donors = `cand_new_unique_ct' if _c == 1            
+            qui replace unique_over200_donors = `cand_unique_over200_ct' ///
+                if _c == 1
+            qui replace new_unique_over200_donors = `cand_unique_over200_ct' ///
+                if _c == 1
+            qui replace amount = `cand_amount' if _c == 1
+            drop _c
+            qui save `c(pwd)'\act-blue-presidential_06.dta, replace            
+            restore
+        }        
     }
 
-    qui drop if _unique == 0 & candidate_name == "`i'"
+    drop _over200 _ytd
+    qui drop if _unique == 0 & candidate_id == `cand_id'
 }
 keep if _unique == 1
 keep donor_*
@@ -629,11 +768,28 @@ order donor_id donor_amt_* donor_ct_*
 // file 05: donor-level totals
 sort donor_id
 compress
+merge 1:m donor_id using `c(pwd)'\act-blue-presidential_03.dta,    keepusing(id)
+drop if _merge != 3
+drop _merge
+merge m:1 id using `c(pwd)'\act-blue-presidential_01.dta, /// 
+    keepusing(name address city state zip occupation employer)
+drop if _merge != 3
+drop _merge
+bysort donor_id : gen byte _unique = _n == 1
+drop if _unique == 0
+drop _unique id
+order donor_id name address city state zip occupation employer
+sort name state zip city address occupation employer
 save `c(pwd)'\act-blue-presidential_05.dta, replace
 
 // file 06: candidate-level totals
 use `c(pwd)'\act-blue-presidential_06.dta, replace
-drop if year == 0
-sort candidate_name year quarter
+drop if period == ""
+sort candidate_name period
+reshape wide contributions unique_donors new_unique_donors ///
+    unique_over200_donors new_unique_over200_donors amount, i(candidate_id) ///
+    j(period) string
+drop new_unique_donors2019_D* new_unique_over200_donors2019_D*
+order candidate_name, after(candidate_id)
 compress
 save `c(pwd)'\act-blue-presidential_06.dta, replace

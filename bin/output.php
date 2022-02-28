@@ -11,16 +11,35 @@ chdir(__DIR__);
 
 require_once __DIR__ . '/../vendor/autoload.php';
 
-$columnsFile = __DIR__ . '/../data/columns.json';
+$skinny = $skinny ?? false;
 
-if (!is_file($columnsFile)) {
-    require __DIR__ . '/generate-columns.php';
+if (!$skinny) {
+    $columnsFile = __DIR__ . '/../data/columns.json';
+
+    if (!is_file($columnsFile)) {
+        require __DIR__ . '/generate-columns.php';
+    }
+
+    $columnsJson = (string)file_get_contents($columnsFile);
+
+    /** @var string[] $columns */
+    $columns = json_decode($columnsJson, true) ?: [];
+} else {
+    $columns = [
+        'candidate_id',
+        'contribution_receipt_date',
+        'contribution_receipt_amount',
+        'contributor_city',
+        'contributor_employer',
+        'contributor_name',
+        'contributor_occupation',
+        'contributor_state',
+        'contributor_street_1',
+        'contributor_zip',
+        'memo_text'
+    ];
 }
 
-$columnsJson = (string)file_get_contents($columnsFile);
-
-/** @var string[] $columns */
-$columns = json_decode($columnsJson, true) ?: [];
 
 if (0 === count($columns)) {
     throw new RuntimeException('Could not parse column information');
@@ -152,7 +171,9 @@ foreach ($files as $file) {
                         continue;
                     }
 
-                    echo "Warning: unexpected column, '$key'. Try re-generating column data" . PHP_EOL;
+                    if (!$skinny) {
+                        echo "Warning: unexpected column, '$key'. Try re-generating column data" . PHP_EOL;
+                    }
                 }
 
                 if (false === fputcsv($outputResource, array_values($reshaped))) {

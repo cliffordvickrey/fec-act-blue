@@ -140,7 +140,7 @@ $partialMatchesWriter = new CsvWriter(__DIR__ . '/../data/match/partial-matches.
 $startTime = microtime(true);
 
 try {
-    $donorIdsWriter->write(['id', 'donor_id', 'similarity', 'info']);
+    $donorIdsWriter->write(['id', 'donor_id']);
     $partialMatchesWriter->write(['info_a', 'info_b', 'similarity', 'hash_a', 'hash_b']);
 
     $generator = $reader->read();
@@ -234,7 +234,7 @@ try {
 
             $info = preg_replace('/^#' . preg_quote($b->id, '/') . '\s-\s/', '', (string)$b);
 
-            $donorIdsWriter->write([$match->contributor->id, $personId, $match->percent, $info]);
+            $donorIdsWriter->write([$match->contributor->id, $personId]);
         }
     }
 } finally {

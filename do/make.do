@@ -445,8 +445,9 @@ gen int new_unique_donors = 0
 gen int unique_over200_donors = 0
 gen int new_unique_over200_donors = 0
 gen float amount = 0
+gen float amount_over200 = 0
 input
-"" 0 "" 0 0 0 0 0 0
+"" 0 "" 0 0 0 0 0 0 0
 end
 
 label var candidate_name "Candidate name"
@@ -458,6 +459,7 @@ label var new_unique_donors "New Unique ActBlue donors"
 label var unique_over200_donors "Unique ActBlue $200+ donors"
 label var new_unique_over200_donors "New Unique ActBlue $200+ donors"
 label var amount "Amount raised via ActBlue"
+label var amount_over200 "Amount raised via ActBlue from $200+ donors"
 save `c(pwd)'\act-blue-presidential_06.dta, replace
 restore
 
@@ -600,6 +602,11 @@ foreach i of local candidates {
             // amount a candidate raised for a given quarter
             qui egen cand_amt = total(_amt)
             
+            // amount a candidate raised for a given quarter from large donors
+            qui gen _amt_over200 = _amt
+            qui replace _amt_over200 = 0 if _over200 == 0
+            qui egen cand_amt_over200 = total(_amt_over200)
+            
             // times a person gave for a given quarter
             qui replace _amt = . if _amt <= 0            
             qui egen donor_ct_`i'_`v'_q`iii' = count(_amt), by(donor_id)
@@ -628,7 +635,7 @@ foreach i of local candidates {
             qui replace _ytd = _ytd + donor_amt_`i'_`v'_q`iii'
 
             // clean up
-            qui drop _amt _valid
+            qui drop _amt _amt_over200 _valid
             
             // label variables
             label var donor_amt_`i'_`v'_q`iii' ///
@@ -654,6 +661,8 @@ foreach i of local candidates {
             local cand_new_unique_over200_ct = r(max)
             qui sum cand_amt
             local cand_amount = r(max)
+            qui sum cand_amt_over200
+            local cand_amount_over200 = r(max)            
 
             di "ActBlue earmarked receipts:       `cand_ct'"
             di "ActBlue unique donors:            `cand_unique_ct'"
@@ -661,6 +670,7 @@ foreach i of local candidates {
             di "ActBlue unique $200+ donors:      `cand_unique_over200_ct'"
             di "ActBlue new unique $200+ donors:  `cand_new_unique_over200_ct'"            
             di "ActBlue received:                $`cand_amount'"
+            di "ActBlue rec'd from $200+ donors: $`cand_amount_over200'"            
             drop cand_*
 
             preserve
@@ -677,6 +687,7 @@ foreach i of local candidates {
             qui replace new_unique_over200_donors = `cand_unique_over200_ct' ///
                 if _c == 1
             qui replace amount = `cand_amount' if _c == 1
+            qui replace amount_over200 = `cand_amount_over200' if _c == 1            
             drop _c
             qui save `c(pwd)'\act-blue-presidential_06.dta, replace            
             restore
@@ -687,7 +698,14 @@ foreach i of local candidates {
             qui gen _amt = amount
             qui replace _amt = 0 if year != `ii' | missing(debate) ///
                 | debate > `iii' | candidate_id != `cand_id'
+
+            // amount a candidate raised for a given debate
             qui egen cand_amt = total(_amt)
+            
+            // amount a candidate raised for a given quarter from large donors
+            qui gen _amt_over200 = _amt
+            qui replace _amt_over200 = 0 if _over200 == 0
+            qui egen cand_amt_over200 = total(_amt_over200)            
             
             // times a person gave for a given debate
             qui replace _amt = . if _amt <= 0            
@@ -711,7 +729,7 @@ foreach i of local candidates {
             qui gen cand_new_unique_over200_ct = cand_unique_over200_ct
             
             // clean up
-            qui drop _amt _valid donor_ct
+            qui drop _amt _amt_over200 _valid donor_ct
             
             // report
             
@@ -731,6 +749,8 @@ foreach i of local candidates {
             local cand_new_unique_over200_ct = r(max)
             qui sum cand_amt
             local cand_amount = r(max)
+            qui sum cand_amt_over200
+            local cand_amount_over200 = r(max)            
 
             di "ActBlue earmarked receipts:       `cand_ct'"
             di "ActBlue unique donors:            `cand_unique_ct'"
@@ -738,6 +758,7 @@ foreach i of local candidates {
             di "ActBlue unique $200+ donors:      `cand_unique_over200_ct'"
             di "ActBlue new unique $200+ donors:  `cand_new_unique_over200_ct'"            
             di "ActBlue received:                $`cand_amount'"
+            di "ActBlue rec'd from $200+ donors: $`cand_amount_over200'"
             drop cand_*
 
             preserve
@@ -754,6 +775,7 @@ foreach i of local candidates {
             qui replace new_unique_over200_donors = `cand_unique_over200_ct' ///
                 if _c == 1
             qui replace amount = `cand_amount' if _c == 1
+            qui replace amount_over200 = `cand_amount_over200' if _c == 1            
             drop _c
             qui save `c(pwd)'\act-blue-presidential_06.dta, replace            
             restore
@@ -772,7 +794,7 @@ order donor_id donor_amt_* donor_ct_*
 // file 05: donor-level totals
 sort donor_id
 compress
-merge 1:m donor_id using `c(pwd)'\act-blue-presidential_03.dta,    keepusing(id)
+merge 1:m donor_id using `c(pwd)'\act-blue-presidential_03.dta, keepusing(id)
 drop if _merge != 3
 drop _merge
 merge m:1 id using `c(pwd)'\act-blue-presidential_01.dta, /// 
@@ -791,9 +813,29 @@ use `c(pwd)'\act-blue-presidential_06.dta, replace
 drop if period == ""
 sort candidate_name period
 reshape wide contributions unique_donors new_unique_donors ///
-    unique_over200_donors new_unique_over200_donors amount, i(candidate_id) ///
-    j(period) string
+    unique_over200_donors new_unique_over200_donors amount amount_over200, ///
+    i(candidate_id) j(period) string
 drop new_unique_donors2019_D* new_unique_over200_donors2019_D*
+
+ren *2019* *_19*
+
+// first half of 2019 totals
+gen contributions_19_H1 = contributions_19_Q1 + contributions_19_Q2
+gen unique_donors_19_H1 = unique_donors_19_Q1 + new_unique_donors_19_Q2
+gen unique_over200_donors_19_H1 = unique_over200_donors_19_Q1 + ///
+    new_unique_over200_donors_19_Q2
+gen amount_19_H1 = amount_19_Q1 + amount_19_Q2
+gen amount_over200_19_H1 = amount_over200_19_Q1 + amount_over200_19_Q2
+
+format amount* %12.0g
+
 order candidate_name, after(candidate_id)
+order contributions_19_H1 unique_donors_19_H1 unique_over200_donors_19_H1 ///
+    amount_19_H1 amount_over200_19_H1, after(candidate_name)
+
+foreach var of varlist _all {
+    label var `var' ""
+}
+
 compress
 save `c(pwd)'\act-blue-presidential_06.dta, replace

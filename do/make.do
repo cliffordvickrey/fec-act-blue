@@ -828,6 +828,9 @@ gen amount_19_H1 = amount_19_Q1 + amount_19_Q2
 gen amount_over200_19_H1 = amount_over200_19_Q1 + amount_over200_19_Q2
 
 format amount* %12.0g
+format contributions* %12.0g
+format unique* %12.0g
+format new* %12.0g
 
 order candidate_name, after(candidate_id)
 order contributions_19_H1 unique_donors_19_H1 unique_over200_donors_19_H1 ///

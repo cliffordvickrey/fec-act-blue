@@ -88,69 +88,77 @@ try {
 
         $logParams = [date(DateTimeInterface::RFC3339), 999, 0, $url, http_build_query($query), PHP_EOL];
 
+        $fetched = false;
         $lastEx = null;
 
-        for ($i = 0; $i < $maxTries; $i++) {
-            $oldStartTime = $startTime ?? 0.0;
-            $startTime = microtime(true);
-
-            $elapsed = $startTime - $oldStartTime;
-
-            if ($elapsed < $rate) {
-                $coolDown = $rate - $elapsed;
-                echo sprintf('Cooling down for %g seconds', $coolDown) . PHP_EOL;
-                usleep((int)($coolDown * 1000000));
+        do {
+            for ($i = 0; $i < $maxTries; $i++) {
+                $oldStartTime = $startTime ?? 0.0;
                 $startTime = microtime(true);
-            }
 
-            echo sprintf('Sending request (contribution_receipt_date = "%s") ... ', $minDate);
+                $elapsed = $startTime - $oldStartTime;
 
-            try {
-                $response = $client->get($url, [
-                    RequestOptions::CONNECT_TIMEOUT => 10,
-                    RequestOptions::QUERY => $query,
-                    RequestOptions::VERIFY => __DIR__ . '/../data/cacert.pem'
-                ]);
-
-                $logParams[1] = $response->getStatusCode();
-
-                echo 'success!' . PHP_EOL;
-
-                $lastEx = null;
-            } catch (ClientException $clientEx) {
-                if ($clientEx->hasResponse()) {
-                    /** @var ResponseInterface $response */
-                    $response = $clientEx->getResponse();
-                    $logParams[1] = $response->getStatusCode();
+                if ($elapsed < $rate) {
+                    $coolDown = $rate - $elapsed;
+                    echo sprintf('Cooling down for %g seconds', $coolDown) . PHP_EOL;
+                    usleep((int)($coolDown * 1000000));
+                    $startTime = microtime(true);
                 }
 
-                $lastEx = $clientEx;
-            } catch (Throwable $ex) {
-                $lastEx = $ex;
-            } finally {
-                $stopTime = microtime(true);
-                $logParams[2] = str_pad(sprintf('%gs', round($stopTime - $startTime, 2)), 7, ' ', STR_PAD_LEFT);
-                $logStream->write(vsprintf('%s %d %s GET %s?%s%s', $logParams));
+                echo sprintf('Sending request (contribution_receipt_date = "%s") ... ', $minDate);
+
+                try {
+                    $response = $client->get($url, [
+                        RequestOptions::CONNECT_TIMEOUT => 10,
+                        RequestOptions::TIMEOUT => 1000,
+                        RequestOptions::QUERY => $query,
+                        RequestOptions::VERIFY => __DIR__ . '/../data/cacert.pem'
+                    ]);
+
+                    $logParams[1] = $response->getStatusCode();
+
+                    echo 'success!' . PHP_EOL;
+
+                    $lastEx = null;
+                } catch (ClientException $clientEx) {
+                    if ($clientEx->hasResponse()) {
+                        /** @var ResponseInterface $response */
+                        $response = $clientEx->getResponse();
+                        $logParams[1] = $response->getStatusCode();
+                    }
+
+                    $lastEx = $clientEx;
+                } catch (Throwable $ex) {
+                    $lastEx = $ex;
+                } finally {
+                    $stopTime = microtime(true);
+                    $logParams[2] = str_pad(sprintf('%gs', round($stopTime - $startTime, 2)), 7, ' ', STR_PAD_LEFT);
+                    $logStream->write(vsprintf('%s %d %s GET %s?%s%s', $logParams));
+                }
+
+                if (null === $lastEx) {
+                    break;
+                }
+
+                echo 'error!' . PHP_EOL;
+
+                if (429 === $logParams[1]) {
+                    echo "The rate limit has been exceeded. Let's wait an hour ..." . PHP_EOL;
+                    sleep(3600); // wait an hour before trying again
+                } else {
+                    echo "Request failed! Let's try again ..." . PHP_EOL;
+                    sleep(1);
+                }
             }
 
-            if (null === $lastEx) {
-                break;
-            }
-
-            echo 'error!' . PHP_EOL;
-
-            if (429 === $logParams[1]) {
-                echo "The rate limit has been exceeded. Let's wait an hour ..." . PHP_EOL;
+            if (null !== $lastEx) {
+                echo "Could not get response 200 after $maxTries tries. I give up!" . PHP_EOL;
+                echo "Let's wait an hour ..." . PHP_EOL;
                 sleep(3600); // wait an hour before trying again
             } else {
-                echo "Request failed! Let's try again ..." . PHP_EOL;
+                $fetched = true;
             }
-        }
-
-        if (null !== $lastEx) {
-            echo "Could not get response 200 after $maxTries tries. I give up!" . PHP_EOL;
-            throw $lastEx;
-        }
+        } while (!$fetched);
 
         // endregion
 
